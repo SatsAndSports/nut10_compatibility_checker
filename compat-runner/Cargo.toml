@@ -1,0 +1,16 @@
+[package]
+name = "compat-runner"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+bip39 = { version = "2.0", features = ["rand"] }
+cdk = { path = "../cdk/crates/cdk", default-features = false, features = ["mint", "wallet"] }
+cdk-mintd = { path = "../cdk/crates/cdk-mintd", default-features = false, features = ["sqlite", "fakewallet"] }
+cdk-sqlite = { path = "../cdk/crates/cdk-sqlite", default-features = true, features = ["wallet"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "fs"] }
+tokio-util = "0.7"

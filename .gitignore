@@ -1,3 +1,9 @@
 # Ignore upstream cloned repositories
 /cdk/
 /nutshell/
+
+# Local build artifacts
+/compat-runner/target/
+
+# Generated runner output
+/compat-runner/compat-report.json

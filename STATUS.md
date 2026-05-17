@@ -99,11 +99,19 @@ Zero-fee settings:
 
 Get two or three simple compatibility tests running against a local zero-fee CDK mint.
 
+Status: complete for the first milestone.
+
 Initial candidate scenarios:
 
 1. `p2pk_swap_unsigned_fails`
 2. `p2pk_swap_signed_succeeds`
 3. `htlc_swap_preimage_and_signature_succeeds`
+
+Current result:
+
+- all three scenarios are now implemented in `compat-runner/`
+- all three pass against an embedded local zero-fee CDK mint
+- JSON output is currently written to `compat-runner/compat-report.json`
 
 These are intentionally smaller than the full suite and should validate:
 
@@ -126,13 +134,33 @@ Expected components:
 - terminal table renderer
 - JSON report writer
 
+## Current Implementation
+
+The standalone runner crate is now:
+
+- `compat-runner/`
+
+Current behavior:
+
+- starts a local CDK mint with `cdk-mintd` as a library
+- uses sqlite in a temp work directory
+- configures zero input fees and zero fakewallet reserve fees
+- creates a fresh wallet context per scenario
+- prints a terminal results table
+- writes a JSON report file
+
+The first implemented scenarios are:
+
+- `p2pk_swap_unsigned_fails`
+- `p2pk_swap_signed_succeeds`
+- `htlc_swap_preimage_and_signature_succeeds`
+
 ## Next Steps
 
-- create the standalone runner crate
-- implement local CDK mint startup and shutdown
-- implement report format
-- port the first 2-3 simple swap scenarios
-- run them against CDK mint
+- add CLI arguments for target selection and report path
+- expand scenario coverage to include `SIG_ALL`
+- add melt scenarios
+- add locktime and refund-path scenarios
 - expand toward the broader CDK NUT-10 matrix
 
 ## Decisions Made
@@ -142,11 +170,12 @@ Expected components:
 - create a separate tool that depends on CDK by path
 - produce terminal and JSON outputs
 - start with a small number of simple CDK mint scenarios before broadening coverage
+- place the standalone crate at `compat-runner/`
+- embed local CDK mint startup through `cdk-mintd::run_mintd_with_shutdown(...)`
+- reuse one local mint per runner invocation and create a fresh wallet context per scenario
 
 ## Open Questions
 
-- where exactly to place the new runner crate in this workspace
-- JSON schema details for the report output
 - whether to keep local mint startup embedded only, or also add process-based startup for parity with non-Rust mints
 
 ## Update Policy
