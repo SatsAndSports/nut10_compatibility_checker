@@ -112,6 +112,7 @@ Current result:
 - all three scenarios are now implemented in `compat-runner/`
 - all three pass against an embedded local zero-fee CDK mint
 - JSON output is currently written to `compat-runner/compat-report.json`
+- the runner has since been expanded to cover the full swap-side CDK spending-condition matrix
 
 These are intentionally smaller than the full suite and should validate:
 
@@ -155,13 +156,25 @@ The first implemented scenarios are:
 - `p2pk_swap_signed_succeeds`
 - `htlc_swap_preimage_and_signature_succeeds`
 
+The current swap coverage now includes:
+
+- non-SIG_ALL P2PK scenarios
+- non-SIG_ALL HTLC scenarios
+- SIG_ALL P2PK scenarios
+- SIG_ALL HTLC scenarios
+- locktime and refund-path swap scenarios
+- mixed-input and tampered-output SIG_ALL negatives
+
+Current verification state:
+
+- the expanded swap suite passes against the embedded local CDK mint
+
 ## Next Steps
 
 - add CLI arguments for target selection and report path
-- expand scenario coverage to include `SIG_ALL`
 - add melt scenarios
-- add locktime and refund-path scenarios
 - expand toward the broader CDK NUT-10 matrix
+- preserve parity notes between runner scenario names and the original CDK test files
 
 ## Decisions Made
 
@@ -173,6 +186,7 @@ The first implemented scenarios are:
 - place the standalone crate at `compat-runner/`
 - embed local CDK mint startup through `cdk-mintd::run_mintd_with_shutdown(...)`
 - reuse one local mint per runner invocation and create a fresh wallet context per scenario
+- complete swap coverage first, then move to melt coverage
 
 ## Open Questions
 
