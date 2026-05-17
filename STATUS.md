@@ -150,8 +150,10 @@ Current behavior:
 - prints a terminal results table
 - writes a JSON report file
 - exits non-zero if any scenario fails
+- reports scenario status as `pass`, `fail`, or `skip`
 - removes the temporary mint work directory during shutdown
 - retries local mint startup across fresh ports
+- creates fresh fake BOLT11 invoices for melt scenarios
 
 The first implemented scenarios are:
 
@@ -169,18 +171,56 @@ The current swap coverage now includes:
 - mixed-input and tampered-output SIG_ALL negatives
 - explicit mixed-data, mixed-kind, and mixed-tags SIG_ALL negatives
 
+The current melt coverage now includes:
+
+- basic P2PK melt scenarios
+- basic HTLC melt scenarios
+- P2PK SIG_ALL melt scenarios
+- HTLC SIG_ALL melt scenarios
+- melt locktime and refund-path scenarios
+
+Implemented melt scenarios:
+
+- `melt_p2pk_unsigned_fails`
+- `melt_p2pk_signed_succeeds`
+- `melt_htlc_preimage_only_fails`
+- `melt_htlc_signature_only_fails`
+- `melt_htlc_preimage_and_signature_succeeds`
+- `melt_p2pk_sigall_unsigned_fails`
+- `melt_p2pk_sigall_sig_inputs_fail`
+- `melt_p2pk_sigall_transaction_signature_succeeds`
+- `melt_htlc_sigall_preimage_only_fails`
+- `melt_htlc_sigall_sig_inputs_fail`
+- `melt_htlc_sigall_preimage_and_transaction_signature_succeeds`
+- `melt_p2pk_post_locktime_anyone_can_spend`
+- `melt_p2pk_before_locktime_wrong_key_fails`
+- `melt_p2pk_before_locktime_correct_key_succeeds`
+
+Implementation notes for melt:
+
+- melt scenarios are quote-driven
+- the runner creates the melt quote first, then funds based on quote requirements
+- for the current fakewallet-backed CDK mint, successful melt flows need one extra sat beyond `quote.amount + quote.fee_reserve`
+- successful melt flows may return `PENDING` first, so the runner polls quote status until final settlement
+- `UNPAID`, `FAILED`, and `UNKNOWN` are treated as terminal non-success states during melt polling
+- current melt scenarios are explicitly scoped to fakewallet-backed targets in the runner capability model
+
 Current verification state:
 
 - the expanded swap suite passes against the embedded local CDK mint
 - negative scenarios now assert expected error classes/messages rather than accepting any failure
+- the melt suite also passes against the embedded local CDK mint
+- the review-driven melt polling and target-scoping fixes are implemented and verified
 
 ## Next Steps
 
 - add CLI arguments for target selection and report path
-- add melt scenarios
 - expand toward the broader CDK NUT-10 matrix
 - preserve parity notes between runner scenario names and the original CDK test files
 - decide whether to rename runner scenarios to match CDK test function names more directly
+- decide whether to keep the current split scenario naming or add an alternate reporting layer keyed by exact upstream CDK test names
+- start evaluating the same suite against Nutshell
+- replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 
 ## Decisions Made
 
@@ -195,6 +235,8 @@ Current verification state:
 - complete swap coverage first, then move to melt coverage
 - fail the runner process if any scenario fails, even though JSON output is still emitted
 - treat negative tests as protocol assertions with expected error matching, not just generic failure detection
+- keep the embedded mint zero-input-fee, but make melt funding quote-driven and target-behavior-aware
+- keep current melt scenarios explicitly fakewallet-scoped until a portable invoice/payment abstraction exists
 
 ## Open Questions
 

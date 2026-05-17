@@ -791,6 +791,7 @@ dependencies = [
  "anyhow",
  "bip39",
  "cdk",
+ "cdk-fake-wallet",
  "cdk-mintd",
  "cdk-sqlite",
  "reqwest",

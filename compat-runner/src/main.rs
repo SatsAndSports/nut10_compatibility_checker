@@ -13,11 +13,13 @@ use cdk::dhke::{blind_message, construct_proofs};
 use cdk::mint_url::MintUrl;
 use cdk::nuts::nut10::Secret as Nut10Secret;
 use cdk::nuts::{
-    BlindedMessage, Conditions, CurrencyUnit, Id, Keys, PaymentMethod, PreMintSecrets, Proof,
-    ProofsMethods, PublicKey, SecretKey, SigFlag, SpendingConditions, SwapRequest,
+    BlindedMessage, Conditions, CurrencyUnit, Id, Keys, MeltQuoteBolt11Request, MeltQuoteState,
+    MeltRequest, PaymentMethod, PreMintSecrets, Proof, ProofsMethods, PublicKey, SecretKey,
+    SigFlag, SpendingConditionVerification, SpendingConditions, SwapRequest,
 };
 use cdk::wallet::{HttpClient, MintConnector, Wallet, WalletBuilder};
-use cdk::{Amount, Error, StreamExt};
+use cdk::{Amount, Error, MeltQuoteCreateResponse, MeltQuoteRequest, MeltQuoteResponse, StreamExt};
+use cdk_fake_wallet::create_fake_invoice;
 use cdk_mintd::config::{Database, DatabaseEngine, FakeWallet, Info, Ln, LnBackend, Settings};
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
@@ -51,11 +53,19 @@ fn standard_input_amount() -> Amount {
 
 type ScenarioFuture = Pin<Box<dyn Future<Output = Result<String>> + Send>>;
 
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum ScenarioStatus {
+    Pass,
+    Fail,
+    Skip,
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct ScenarioResult {
     name: String,
     target: String,
-    passed: bool,
+    status: ScenarioStatus,
     duration_ms: u128,
     note: String,
 }
@@ -96,11 +106,27 @@ struct HtlcFixture {
     preimage: String,
 }
 
+#[derive(Clone)]
+struct MeltQuoteInfo {
+    quote_id: String,
+    amount: Amount,
+    fee_reserve: Amount,
+}
+
+struct TargetProfile {
+    name: String,
+    mint_url: String,
+    supports_fakewallet_melt: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let mint = LocalMintHandle::start().await?;
-    let target = "cdk".to_string();
-    let mint_url = mint.mint_url.clone();
+    let target = TargetProfile {
+        name: "cdk".to_string(),
+        mint_url: mint.mint_url.clone(),
+        supports_fakewallet_melt: true,
+    };
 
     let suite_result: Result<Report> = async {
         let scenarios: Vec<(&str, Box<dyn FnOnce(String) -> ScenarioFuture + Send>)> = vec![
@@ -255,12 +281,68 @@ async fn main() -> Result<()> {
                 "htlc_sigall_receiver_path_after_locktime",
                 scenario_htlc_sigall_receiver_path_after_locktime,
             ),
+            scenario(
+                "melt_p2pk_unsigned_fails",
+                scenario_melt_p2pk_unsigned_fails,
+            ),
+            scenario(
+                "melt_p2pk_signed_succeeds",
+                scenario_melt_p2pk_signed_succeeds,
+            ),
+            scenario(
+                "melt_htlc_preimage_only_fails",
+                scenario_melt_htlc_preimage_only_fails,
+            ),
+            scenario(
+                "melt_htlc_signature_only_fails",
+                scenario_melt_htlc_signature_only_fails,
+            ),
+            scenario(
+                "melt_htlc_preimage_and_signature_succeeds",
+                scenario_melt_htlc_preimage_and_signature_succeeds,
+            ),
+            scenario(
+                "melt_p2pk_sigall_unsigned_fails",
+                scenario_melt_p2pk_sigall_unsigned_fails,
+            ),
+            scenario(
+                "melt_p2pk_sigall_sig_inputs_fail",
+                scenario_melt_p2pk_sigall_sig_inputs_fail,
+            ),
+            scenario(
+                "melt_p2pk_sigall_transaction_signature_succeeds",
+                scenario_melt_p2pk_sigall_transaction_signature_succeeds,
+            ),
+            scenario(
+                "melt_htlc_sigall_preimage_only_fails",
+                scenario_melt_htlc_sigall_preimage_only_fails,
+            ),
+            scenario(
+                "melt_htlc_sigall_sig_inputs_fail",
+                scenario_melt_htlc_sigall_sig_inputs_fail,
+            ),
+            scenario(
+                "melt_htlc_sigall_preimage_and_transaction_signature_succeeds",
+                scenario_melt_htlc_sigall_preimage_and_transaction_signature_succeeds,
+            ),
+            scenario(
+                "melt_p2pk_post_locktime_anyone_can_spend",
+                scenario_melt_p2pk_post_locktime_anyone_can_spend,
+            ),
+            scenario(
+                "melt_p2pk_before_locktime_wrong_key_fails",
+                scenario_melt_p2pk_before_locktime_wrong_key_fails,
+            ),
+            scenario(
+                "melt_p2pk_before_locktime_correct_key_succeeds",
+                scenario_melt_p2pk_before_locktime_correct_key_succeeds,
+            ),
         ];
 
         let mut results = Vec::with_capacity(scenarios.len());
 
         for (name, scenario) in scenarios {
-            results.push(run_named_scenario(name, &target, &mint_url, scenario).await);
+            results.push(run_named_scenario(name, &target, scenario).await);
         }
 
         print_results_table(&results);
@@ -270,8 +352,8 @@ async fn main() -> Result<()> {
                 .duration_since(UNIX_EPOCH)
                 .context("system clock before unix epoch")?
                 .as_secs(),
-            target,
-            mint_url,
+            target: target.name.clone(),
+            mint_url: target.mint_url.clone(),
             results,
         };
 
@@ -294,7 +376,7 @@ async fn main() -> Result<()> {
     let failure_count = report
         .results
         .iter()
-        .filter(|result| !result.passed)
+        .filter(|result| matches!(result.status, ScenarioStatus::Fail))
         .count();
     if failure_count > 0 {
         return Err(anyhow!("{failure_count} scenario(s) failed"));
@@ -319,28 +401,41 @@ where
 
 async fn run_named_scenario(
     name: &str,
-    target: &str,
-    mint_url: &str,
+    target: &TargetProfile,
     scenario: Box<dyn FnOnce(String) -> ScenarioFuture + Send>,
 ) -> ScenarioResult {
     let started = Instant::now();
 
-    match scenario(mint_url.to_string()).await {
+    if scenario_requires_fakewallet_melt(name) && !target.supports_fakewallet_melt {
+        return ScenarioResult {
+            name: name.to_string(),
+            target: target.name.clone(),
+            status: ScenarioStatus::Skip,
+            duration_ms: started.elapsed().as_millis(),
+            note: "scenario currently requires fakewallet-backed melt support".to_string(),
+        };
+    }
+
+    match scenario(target.mint_url.clone()).await {
         Ok(note) => ScenarioResult {
             name: name.to_string(),
-            target: target.to_string(),
-            passed: true,
+            target: target.name.clone(),
+            status: ScenarioStatus::Pass,
             duration_ms: started.elapsed().as_millis(),
             note,
         },
         Err(err) => ScenarioResult {
             name: name.to_string(),
-            target: target.to_string(),
-            passed: false,
+            target: target.name.clone(),
+            status: ScenarioStatus::Fail,
             duration_ms: started.elapsed().as_millis(),
             note: err.to_string(),
         },
     }
+}
+
+fn scenario_requires_fakewallet_melt(name: &str) -> bool {
+    name.starts_with("melt_")
 }
 
 impl LocalMintHandle {
@@ -485,6 +580,120 @@ impl TestContext {
 
 fn standard_fee_and_amounts() -> FeeAndAmounts {
     (0, (0..32).map(|power| 2u64.pow(power)).collect::<Vec<_>>()).into()
+}
+
+fn test_bolt11_invoice() -> Result<cdk::Bolt11Invoice> {
+    Ok(create_fake_invoice(
+        10_000,
+        format!(
+            "compat-melt-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .context("system clock before unix epoch")?
+                .as_nanos()
+        ),
+    ))
+}
+
+fn required_melt_input_amount(quote: &MeltQuoteInfo) -> Amount {
+    quote.amount + quote.fee_reserve
+}
+
+fn successful_melt_input_amount(quote: &MeltQuoteInfo) -> Amount {
+    // CDK fakewallet currently reports total_spent = amount + 1 unit during payment,
+    // so successful melt flows need one extra unit beyond quote.amount + fee_reserve.
+    required_melt_input_amount(quote) + Amount::ONE
+}
+
+async fn create_melt_quote(client: &HttpClient) -> Result<MeltQuoteInfo> {
+    let request = MeltQuoteRequest::Bolt11(MeltQuoteBolt11Request {
+        request: test_bolt11_invoice()?,
+        unit: CurrencyUnit::Sat,
+        options: None,
+    });
+    let quote = client.post_melt_quote(request).await?;
+
+    Ok(MeltQuoteInfo {
+        quote_id: quote.quote().clone(),
+        amount: match &quote {
+            MeltQuoteCreateResponse::Bolt11(r) => r.amount,
+            MeltQuoteCreateResponse::Bolt12(r) => r.amount,
+            MeltQuoteCreateResponse::Custom((_, r)) => r.amount,
+        },
+        fee_reserve: match &quote {
+            MeltQuoteCreateResponse::Bolt11(r) => r.fee_reserve,
+            MeltQuoteCreateResponse::Bolt12(r) => r.fee_reserve,
+            MeltQuoteCreateResponse::Custom((_, r)) => r.fee_reserve,
+        },
+    })
+}
+
+fn melt_request_from_proofs(quote_id: String, proofs: Vec<Proof>) -> MeltRequest<String> {
+    MeltRequest::new(quote_id, proofs, None)
+}
+
+async fn prepare_locked_melt_proofs(
+    mint_url: &str,
+    conditions: &SpendingConditions,
+) -> Result<(TestContext, MeltQuoteInfo, Vec<Proof>)> {
+    let ctx = TestContext::new(mint_url).await?;
+    let quote = create_melt_quote(&ctx.client).await?;
+    let input_amount = successful_melt_input_amount(&quote);
+    ctx.fund_wallet(input_amount).await?;
+    let locked = lock_proofs_with_conditions(&ctx, input_amount, conditions).await?;
+    Ok((ctx, quote, locked.proofs))
+}
+
+async fn wait_for_melt_completion(
+    client: &HttpClient,
+    quote_id: &str,
+    timeout: Duration,
+) -> Result<MeltQuoteResponse<String>> {
+    let started = Instant::now();
+
+    loop {
+        if started.elapsed() > timeout {
+            return Err(anyhow!(
+                "timed out waiting for melt quote {quote_id} to settle"
+            ));
+        }
+
+        let response = client
+            .get_melt_quote_status(PaymentMethod::BOLT11, quote_id)
+            .await?;
+
+        match response.state() {
+            MeltQuoteState::Paid => return Ok(response),
+            MeltQuoteState::Failed | MeltQuoteState::Unknown | MeltQuoteState::Unpaid => {
+                return Err(anyhow!(
+                    "melt quote {quote_id} settled unexpectedly with state {}",
+                    response.state()
+                ));
+            }
+            MeltQuoteState::Pending => {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        }
+    }
+}
+
+async fn post_melt_and_wait_for_success(
+    client: &HttpClient,
+    request: MeltRequest<String>,
+    msg: &str,
+) -> Result<MeltQuoteResponse<String>> {
+    let initial =
+        expect_melt_success(client.post_melt(&PaymentMethod::BOLT11, request).await, msg)?;
+
+    match initial.state() {
+        MeltQuoteState::Paid => Ok(initial),
+        MeltQuoteState::Pending => {
+            wait_for_melt_completion(client, initial.quote(), Duration::from_secs(5)).await
+        }
+        MeltQuoteState::Failed | MeltQuoteState::Unknown | MeltQuoteState::Unpaid => {
+            Err(anyhow!("{msg}: unexpected melt state {}", initial.state()))
+        }
+    }
 }
 
 fn create_test_keypair() -> Keypair {
@@ -711,6 +920,50 @@ fn expect_swap_success(
     result: std::result::Result<cdk::nuts::SwapResponse, Error>,
     msg: &str,
 ) -> Result<cdk::nuts::SwapResponse> {
+    result.map_err(|err| anyhow!("{msg}: {err}"))
+}
+
+fn expect_melt_failure(
+    result: std::result::Result<MeltQuoteResponse<String>, Error>,
+    msg: &str,
+) -> Result<String> {
+    match result {
+        Ok(_) => Err(anyhow!("{msg}: melt unexpectedly succeeded")),
+        Err(err) => {
+            let expected_substrings = match msg {
+                "melt P2PK unsigned" => EXPECT_SIGNATURE_INVALID,
+                "melt HTLC preimage-only" => EXPECT_WITNESS_NO_SIGNATURES,
+                "melt HTLC signature-only" => EXPECT_NOT_HTLC_SECRET,
+                "melt P2PK SIG_ALL unsigned" => EXPECT_SIGNATURE_INVALID,
+                "melt P2PK SIG_ALL sig-inputs" => EXPECT_SIGNATURE_INVALID,
+                "melt HTLC SIG_ALL preimage-only" => EXPECT_SIGALL_WITNESS_NO_SIGNATURES,
+                "melt HTLC SIG_ALL sig-inputs" => EXPECT_HTLC_SPEND_NOT_MET,
+                "melt P2PK wrong key before locktime" => EXPECT_SIGNATURE_INVALID,
+                _ => {
+                    return Err(anyhow!(
+                        "{msg}: no expected error mapping for actual error `{}`",
+                        err
+                    ));
+                }
+            };
+
+            if error_contains_any(&err, expected_substrings) {
+                Ok(err.to_string())
+            } else {
+                Err(anyhow!(
+                    "{msg}: unexpected error `{}`; expected one of {:?}",
+                    err,
+                    expected_substrings
+                ))
+            }
+        }
+    }
+}
+
+fn expect_melt_success(
+    result: std::result::Result<MeltQuoteResponse<String>, Error>,
+    msg: &str,
+) -> Result<MeltQuoteResponse<String>> {
     result.map_err(|err| anyhow!("{msg}: {err}"))
 }
 
@@ -2014,6 +2267,406 @@ async fn scenario_htlc_sigall_receiver_path_after_locktime(mint_url: String) -> 
     Ok("SIG_ALL HTLC receiver path remains valid after locktime".to_string())
 }
 
+async fn scenario_melt_p2pk_unsigned_fails(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(alice.public, None);
+    let (ctx, quote, proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt P2PK unsigned: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt P2PK unsigned",
+    )?;
+    Ok(format!("unsigned melt rejected as expected: {error}"))
+}
+
+async fn scenario_melt_p2pk_signed_succeeds(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(alice.public, None);
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    sign_all_inputs(&mut proofs, &[alice.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.verify_spending_conditions()?;
+
+    let response = post_melt_and_wait_for_success(&ctx.client, request, "melt P2PK signed").await?;
+    if response.quote() != &quote.quote_id {
+        return Err(anyhow!("melt P2PK signed: quote id mismatch"));
+    }
+    Ok(format!("melt succeeded with state {}", response.state()))
+}
+
+async fn scenario_melt_htlc_preimage_only_fails(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: Some(vec![alice.public]),
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::default(),
+            num_sigs_refund: None,
+        }),
+    )?;
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    for proof in &mut proofs {
+        proof.add_preimage(fixture.preimage.clone());
+    }
+
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt HTLC preimage-only: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt HTLC preimage-only",
+    )?;
+    Ok(format!("preimage-only melt rejected as expected: {error}"))
+}
+
+async fn scenario_melt_htlc_signature_only_fails(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: Some(vec![alice.public]),
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::default(),
+            num_sigs_refund: None,
+        }),
+    )?;
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    sign_all_inputs(&mut proofs, &[alice.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt HTLC signature-only: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt HTLC signature-only",
+    )?;
+    Ok(format!("signature-only melt rejected as expected: {error}"))
+}
+
+async fn scenario_melt_htlc_preimage_and_signature_succeeds(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: Some(vec![alice.public]),
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::default(),
+            num_sigs_refund: None,
+        }),
+    )?;
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    add_preimage_and_sign_all_inputs(&mut proofs, &fixture.preimage, &[alice.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.verify_spending_conditions()?;
+
+    let response = post_melt_and_wait_for_success(&ctx.client, request, "melt HTLC valid").await?;
+    Ok(format!("melt succeeded with state {}", response.state()))
+}
+
+async fn scenario_melt_p2pk_sigall_unsigned_fails(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions::new(
+            None,
+            None,
+            None,
+            None,
+            Some(SigFlag::SigAll),
+            None,
+        )?),
+    );
+    let (ctx, quote, proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt P2PK SIG_ALL unsigned: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt P2PK SIG_ALL unsigned",
+    )?;
+    Ok(format!(
+        "unsigned SIG_ALL melt rejected as expected: {error}"
+    ))
+}
+
+async fn scenario_melt_p2pk_sigall_sig_inputs_fail(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions::new(
+            None,
+            None,
+            None,
+            None,
+            Some(SigFlag::SigAll),
+            None,
+        )?),
+    );
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    sign_all_inputs(&mut proofs, &[alice.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt P2PK SIG_ALL sig-inputs: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt P2PK SIG_ALL sig-inputs",
+    )?;
+    Ok(format!(
+        "SIG_INPUTS melt rejected for SIG_ALL as expected: {error}"
+    ))
+}
+
+async fn scenario_melt_p2pk_sigall_transaction_signature_succeeds(
+    mint_url: String,
+) -> Result<String> {
+    let alice = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions::new(
+            None,
+            None,
+            None,
+            None,
+            Some(SigFlag::SigAll),
+            None,
+        )?),
+    );
+    let (ctx, quote, proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    let mut request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.sign_sig_all(alice.secret)?;
+    request.verify_spending_conditions()?;
+
+    let response =
+        post_melt_and_wait_for_success(&ctx.client, request, "melt P2PK SIG_ALL valid").await?;
+    Ok(format!("melt succeeded with state {}", response.state()))
+}
+
+async fn scenario_melt_htlc_sigall_preimage_only_fails(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: Some(vec![alice.public]),
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigAll,
+            num_sigs_refund: None,
+        }),
+    )?;
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    proofs[0].add_preimage(fixture.preimage.clone());
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt HTLC SIG_ALL preimage-only: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt HTLC SIG_ALL preimage-only",
+    )?;
+    Ok(format!(
+        "preimage-only SIG_ALL melt rejected as expected: {error}"
+    ))
+}
+
+async fn scenario_melt_htlc_sigall_sig_inputs_fail(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: Some(vec![alice.public]),
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigAll,
+            num_sigs_refund: None,
+        }),
+    )?;
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    proofs[0].add_preimage(fixture.preimage.clone());
+    sign_all_inputs(&mut proofs, &[alice.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt HTLC SIG_ALL sig-inputs: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt HTLC SIG_ALL sig-inputs",
+    )?;
+    Ok(format!(
+        "SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: {error}"
+    ))
+}
+
+async fn scenario_melt_htlc_sigall_preimage_and_transaction_signature_succeeds(
+    mint_url: String,
+) -> Result<String> {
+    let alice = create_test_keypair();
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: Some(vec![alice.public]),
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigAll,
+            num_sigs_refund: None,
+        }),
+    )?;
+    let (ctx, quote, proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    let mut request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.inputs_mut()[0].add_preimage(fixture.preimage.clone());
+    request.sign_sig_all(alice.secret)?;
+    request.verify_spending_conditions()?;
+
+    let response =
+        post_melt_and_wait_for_success(&ctx.client, request, "melt HTLC SIG_ALL valid").await?;
+    Ok(format!("melt succeeded with state {}", response.state()))
+}
+
+async fn scenario_melt_p2pk_post_locktime_anyone_can_spend(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let bob = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions {
+            locktime: Some(cdk::util::unix_time() - 3600),
+            pubkeys: None,
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigInputs,
+            num_sigs_refund: None,
+        }),
+    );
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    sign_all_inputs(&mut proofs, &[bob.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.verify_spending_conditions()?;
+
+    let response = post_melt_and_wait_for_success(
+        &ctx.client,
+        request,
+        "melt anyone-can-spend after locktime",
+    )
+    .await?;
+    Ok(format!("melt succeeded with state {}", response.state()))
+}
+
+async fn scenario_melt_p2pk_before_locktime_wrong_key_fails(mint_url: String) -> Result<String> {
+    let alice = create_test_keypair();
+    let bob = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions::new(
+            Some(cdk::util::unix_time() + 365 * 24 * 60 * 60),
+            None,
+            None,
+            None,
+            Some(SigFlag::SigInputs),
+            None,
+        )?),
+    );
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    sign_all_inputs(&mut proofs, &[bob.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    if request.verify_spending_conditions().is_ok() {
+        return Err(anyhow!(
+            "melt P2PK wrong key before locktime: local verification unexpectedly succeeded"
+        ));
+    }
+
+    let error = expect_melt_failure(
+        ctx.client.post_melt(&PaymentMethod::BOLT11, request).await,
+        "melt P2PK wrong key before locktime",
+    )?;
+    Ok(format!(
+        "wrong-key melt rejected before locktime as expected: {error}"
+    ))
+}
+
+async fn scenario_melt_p2pk_before_locktime_correct_key_succeeds(
+    mint_url: String,
+) -> Result<String> {
+    let alice = create_test_keypair();
+    let conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions::new(
+            Some(cdk::util::unix_time() + 365 * 24 * 60 * 60),
+            None,
+            None,
+            None,
+            Some(SigFlag::SigInputs),
+            None,
+        )?),
+    );
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    sign_all_inputs(&mut proofs, &[alice.secret])?;
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.verify_spending_conditions()?;
+
+    let response = post_melt_and_wait_for_success(
+        &ctx.client,
+        request,
+        "melt P2PK correct key before locktime",
+    )
+    .await?;
+    Ok(format!("melt succeeded with state {}", response.state()))
+}
+
 fn build_zero_fee_settings(mint_url: &str, port: u16) -> Result<Settings> {
     let mnemonic = Mnemonic::generate(12)?.to_string();
 
@@ -2115,10 +2768,10 @@ fn print_results_table(results: &[ScenarioResult]) {
     for result in results {
         rows.push(vec![
             result.name.clone(),
-            if result.passed {
-                "PASS".to_string()
-            } else {
-                "FAIL".to_string()
+            match result.status {
+                ScenarioStatus::Pass => "PASS".to_string(),
+                ScenarioStatus::Fail => "FAIL".to_string(),
+                ScenarioStatus::Skip => "SKIP".to_string(),
             },
             format!("{} ms", result.duration_ms),
             result.note.clone(),
