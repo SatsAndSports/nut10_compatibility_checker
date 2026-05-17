@@ -24,6 +24,26 @@ use tokio_util::sync::CancellationToken;
 
 const DEFAULT_JSON_REPORT_PATH: &str = "compat-report.json";
 const DEFAULT_MINT_HOST: &str = "127.0.0.1";
+const MINT_STARTUP_ATTEMPTS: u8 = 5;
+const MINT_STARTUP_TIMEOUT_SECS: u64 = 5;
+
+const EXPECT_SIGNATURE_INVALID: &[&str] = &["Signature missing or invalid"];
+const EXPECT_WITNESS_NO_SIGNATURES: &[&str] = &["Witness did not provide signatures"];
+const EXPECT_SIGALL_WITNESS_NO_SIGNATURES: &[&str] = &[
+    "Witness signatures not provided",
+    "Witness did not provide signatures",
+];
+const EXPECT_NOT_HTLC_SECRET: &[&str] = &["Secret is not a HTLC secret"];
+const EXPECT_PREIMAGE_INVALID_HEX: &[&str] = &["Preimage must be valid hex encoding"];
+const EXPECT_HTLC_SPEND_NOT_MET: &[&str] = &[
+    "HTLC spend conditions are not met",
+    "P2PK spend conditions are not met",
+];
+const EXPECT_P2PK_OR_SIGNATURE_FAILURE: &[&str] = &[
+    "P2PK spend conditions are not met",
+    "Signature missing or invalid",
+];
+const EXPECT_SIGALL_INPUT_MISMATCH: &[&str] = &["Spend conditions are not met"];
 
 fn standard_input_amount() -> Amount {
     Amount::from(10)
@@ -82,172 +102,203 @@ async fn main() -> Result<()> {
     let target = "cdk".to_string();
     let mint_url = mint.mint_url.clone();
 
-    let scenarios: Vec<(&str, Box<dyn FnOnce(String) -> ScenarioFuture + Send>)> = vec![
-        scenario(
-            "p2pk_swap_unsigned_fails",
-            scenario_p2pk_swap_unsigned_fails,
-        ),
-        scenario(
-            "p2pk_partial_signatures_fail",
-            scenario_p2pk_partial_signatures_fail,
-        ),
-        scenario(
-            "p2pk_swap_signed_succeeds",
-            scenario_p2pk_swap_signed_succeeds,
-        ),
-        scenario("p2pk_multisig_2of3", scenario_p2pk_multisig_2of3),
-        scenario(
-            "p2pk_locktime_before_expiry_primary_only",
-            scenario_p2pk_locktime_before_expiry_primary_only,
-        ),
-        scenario(
-            "p2pk_locktime_after_expiry_primary_still_works",
-            scenario_p2pk_locktime_after_expiry_primary_still_works,
-        ),
-        scenario(
-            "p2pk_locktime_after_expiry_no_refund_anyone_can_spend",
-            scenario_p2pk_locktime_after_expiry_no_refund_anyone_can_spend,
-        ),
-        scenario(
-            "p2pk_multisig_locktime_primary_still_works",
-            scenario_p2pk_multisig_locktime_primary_still_works,
-        ),
-        scenario("p2pk_wrong_signer_fails", scenario_p2pk_wrong_signer_fails),
-        scenario(
-            "p2pk_duplicate_signatures_fail",
-            scenario_p2pk_duplicate_signatures_fail,
-        ),
-        scenario(
-            "htlc_preimage_only_fails",
-            scenario_htlc_preimage_only_fails,
-        ),
-        scenario(
-            "htlc_signature_only_fails",
-            scenario_htlc_signature_only_fails,
-        ),
-        scenario(
-            "htlc_swap_preimage_and_signature_succeeds",
-            scenario_htlc_swap_preimage_and_signature_succeeds,
-        ),
-        scenario(
-            "htlc_wrong_preimage_fails",
-            scenario_htlc_wrong_preimage_fails,
-        ),
-        scenario(
-            "htlc_locktime_after_expiry_refund_succeeds",
-            scenario_htlc_locktime_after_expiry_refund_succeeds,
-        ),
-        scenario("htlc_multisig_2of3", scenario_htlc_multisig_2of3),
-        scenario(
-            "htlc_receiver_path_after_locktime",
-            scenario_htlc_receiver_path_after_locktime,
-        ),
-        scenario(
-            "p2pk_sigall_requires_transaction_signature",
-            scenario_p2pk_sigall_requires_transaction_signature,
-        ),
-        scenario(
-            "p2pk_sigall_sig_inputs_fail",
-            scenario_p2pk_sigall_sig_inputs_fail,
-        ),
-        scenario(
-            "p2pk_sigall_multisig_2of3",
-            scenario_p2pk_sigall_multisig_2of3,
-        ),
-        scenario(
-            "p2pk_sigall_wrong_signer_fails",
-            scenario_p2pk_sigall_wrong_signer_fails,
-        ),
-        scenario(
-            "p2pk_sigall_duplicate_signatures_fail",
-            scenario_p2pk_sigall_duplicate_signatures_fail,
-        ),
-        scenario(
-            "p2pk_sigall_locktime_before_expiry_primary_only",
-            scenario_p2pk_sigall_locktime_before_expiry_primary_only,
-        ),
-        scenario(
-            "p2pk_sigall_locktime_after_expiry_primary_still_works",
-            scenario_p2pk_sigall_locktime_after_expiry_primary_still_works,
-        ),
-        scenario(
-            "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend",
-            scenario_p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend,
-        ),
-        scenario(
-            "p2pk_sigall_multisig_locktime_primary_still_works",
-            scenario_p2pk_sigall_multisig_locktime_primary_still_works,
-        ),
-        scenario(
-            "p2pk_sigall_mixed_proofs_different_data_fail",
-            scenario_p2pk_sigall_mixed_proofs_different_data_fail,
-        ),
-        scenario(
-            "p2pk_sigall_multisig_before_locktime",
-            scenario_p2pk_sigall_multisig_before_locktime,
-        ),
-        scenario(
-            "p2pk_sigall_more_signatures_than_required",
-            scenario_p2pk_sigall_more_signatures_than_required,
-        ),
-        scenario(
-            "p2pk_sigall_refund_multisig_2of2",
-            scenario_p2pk_sigall_refund_multisig_2of2,
-        ),
-        scenario(
-            "p2pk_sigall_output_amounts_swapped_fail",
-            scenario_p2pk_sigall_output_amounts_swapped_fail,
-        ),
-        scenario(
-            "htlc_sigall_preimage_only_fails",
-            scenario_htlc_sigall_preimage_only_fails,
-        ),
-        scenario(
-            "htlc_sigall_signature_only_fails",
-            scenario_htlc_sigall_signature_only_fails,
-        ),
-        scenario(
-            "htlc_sigall_requires_preimage_and_transaction_signature",
-            scenario_htlc_sigall_requires_preimage_and_transaction_signature,
-        ),
-        scenario(
-            "htlc_sigall_wrong_preimage_fails",
-            scenario_htlc_sigall_wrong_preimage_fails,
-        ),
-        scenario(
-            "htlc_sigall_locktime_after_expiry_refund_succeeds",
-            scenario_htlc_sigall_locktime_after_expiry_refund_succeeds,
-        ),
-        scenario(
-            "htlc_sigall_multisig_2of3",
-            scenario_htlc_sigall_multisig_2of3,
-        ),
-        scenario(
-            "htlc_sigall_receiver_path_after_locktime",
-            scenario_htlc_sigall_receiver_path_after_locktime,
-        ),
-    ];
+    let suite_result: Result<Report> = async {
+        let scenarios: Vec<(&str, Box<dyn FnOnce(String) -> ScenarioFuture + Send>)> = vec![
+            scenario(
+                "p2pk_swap_unsigned_fails",
+                scenario_p2pk_swap_unsigned_fails,
+            ),
+            scenario(
+                "p2pk_partial_signatures_fail",
+                scenario_p2pk_partial_signatures_fail,
+            ),
+            scenario(
+                "p2pk_swap_signed_succeeds",
+                scenario_p2pk_swap_signed_succeeds,
+            ),
+            scenario("p2pk_multisig_2of3", scenario_p2pk_multisig_2of3),
+            scenario(
+                "p2pk_locktime_before_expiry_primary_only",
+                scenario_p2pk_locktime_before_expiry_primary_only,
+            ),
+            scenario(
+                "p2pk_locktime_after_expiry_primary_still_works",
+                scenario_p2pk_locktime_after_expiry_primary_still_works,
+            ),
+            scenario(
+                "p2pk_locktime_after_expiry_no_refund_anyone_can_spend",
+                scenario_p2pk_locktime_after_expiry_no_refund_anyone_can_spend,
+            ),
+            scenario(
+                "p2pk_multisig_locktime_primary_still_works",
+                scenario_p2pk_multisig_locktime_primary_still_works,
+            ),
+            scenario("p2pk_wrong_signer_fails", scenario_p2pk_wrong_signer_fails),
+            scenario(
+                "p2pk_duplicate_signatures_fail",
+                scenario_p2pk_duplicate_signatures_fail,
+            ),
+            scenario(
+                "htlc_preimage_only_fails",
+                scenario_htlc_preimage_only_fails,
+            ),
+            scenario(
+                "htlc_signature_only_fails",
+                scenario_htlc_signature_only_fails,
+            ),
+            scenario(
+                "htlc_swap_preimage_and_signature_succeeds",
+                scenario_htlc_swap_preimage_and_signature_succeeds,
+            ),
+            scenario(
+                "htlc_wrong_preimage_fails",
+                scenario_htlc_wrong_preimage_fails,
+            ),
+            scenario(
+                "htlc_locktime_after_expiry_refund_succeeds",
+                scenario_htlc_locktime_after_expiry_refund_succeeds,
+            ),
+            scenario("htlc_multisig_2of3", scenario_htlc_multisig_2of3),
+            scenario(
+                "htlc_receiver_path_after_locktime",
+                scenario_htlc_receiver_path_after_locktime,
+            ),
+            scenario(
+                "p2pk_sigall_requires_transaction_signature",
+                scenario_p2pk_sigall_requires_transaction_signature,
+            ),
+            scenario(
+                "p2pk_sigall_sig_inputs_fail",
+                scenario_p2pk_sigall_sig_inputs_fail,
+            ),
+            scenario(
+                "p2pk_sigall_multisig_2of3",
+                scenario_p2pk_sigall_multisig_2of3,
+            ),
+            scenario(
+                "p2pk_sigall_wrong_signer_fails",
+                scenario_p2pk_sigall_wrong_signer_fails,
+            ),
+            scenario(
+                "p2pk_sigall_duplicate_signatures_fail",
+                scenario_p2pk_sigall_duplicate_signatures_fail,
+            ),
+            scenario(
+                "p2pk_sigall_locktime_before_expiry_primary_only",
+                scenario_p2pk_sigall_locktime_before_expiry_primary_only,
+            ),
+            scenario(
+                "p2pk_sigall_locktime_after_expiry_primary_still_works",
+                scenario_p2pk_sigall_locktime_after_expiry_primary_still_works,
+            ),
+            scenario(
+                "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend",
+                scenario_p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend,
+            ),
+            scenario(
+                "p2pk_sigall_multisig_locktime_primary_still_works",
+                scenario_p2pk_sigall_multisig_locktime_primary_still_works,
+            ),
+            scenario(
+                "p2pk_sigall_mixed_proofs_different_data_fail",
+                scenario_p2pk_sigall_mixed_proofs_different_data_fail,
+            ),
+            scenario(
+                "p2pk_sigall_mixed_proofs_different_kind_fail",
+                scenario_p2pk_sigall_mixed_proofs_different_kind_fail,
+            ),
+            scenario(
+                "p2pk_sigall_mixed_proofs_different_tags_fail",
+                scenario_p2pk_sigall_mixed_proofs_different_tags_fail,
+            ),
+            scenario(
+                "p2pk_sigall_multisig_before_locktime",
+                scenario_p2pk_sigall_multisig_before_locktime,
+            ),
+            scenario(
+                "p2pk_sigall_more_signatures_than_required",
+                scenario_p2pk_sigall_more_signatures_than_required,
+            ),
+            scenario(
+                "p2pk_sigall_refund_multisig_2of2",
+                scenario_p2pk_sigall_refund_multisig_2of2,
+            ),
+            scenario(
+                "p2pk_sigall_output_amounts_swapped_fail",
+                scenario_p2pk_sigall_output_amounts_swapped_fail,
+            ),
+            scenario(
+                "htlc_sigall_preimage_only_fails",
+                scenario_htlc_sigall_preimage_only_fails,
+            ),
+            scenario(
+                "htlc_sigall_signature_only_fails",
+                scenario_htlc_sigall_signature_only_fails,
+            ),
+            scenario(
+                "htlc_sigall_requires_preimage_and_transaction_signature",
+                scenario_htlc_sigall_requires_preimage_and_transaction_signature,
+            ),
+            scenario(
+                "htlc_sigall_wrong_preimage_fails",
+                scenario_htlc_sigall_wrong_preimage_fails,
+            ),
+            scenario(
+                "htlc_sigall_locktime_after_expiry_refund_succeeds",
+                scenario_htlc_sigall_locktime_after_expiry_refund_succeeds,
+            ),
+            scenario(
+                "htlc_sigall_multisig_2of3",
+                scenario_htlc_sigall_multisig_2of3,
+            ),
+            scenario(
+                "htlc_sigall_receiver_path_after_locktime",
+                scenario_htlc_sigall_receiver_path_after_locktime,
+            ),
+        ];
 
-    let mut results = Vec::with_capacity(scenarios.len());
+        let mut results = Vec::with_capacity(scenarios.len());
 
-    for (name, scenario) in scenarios {
-        results.push(run_named_scenario(name, &target, &mint_url, scenario).await);
+        for (name, scenario) in scenarios {
+            results.push(run_named_scenario(name, &target, &mint_url, scenario).await);
+        }
+
+        print_results_table(&results);
+
+        let report = Report {
+            generated_at_unix_secs: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .context("system clock before unix epoch")?
+                .as_secs(),
+            target,
+            mint_url,
+            results,
+        };
+
+        write_json_report(Path::new(DEFAULT_JSON_REPORT_PATH), &report).await?;
+
+        Ok(report)
+    }
+    .await;
+
+    let stop_result = mint.stop().await;
+
+    if let Err(stop_err) = stop_result {
+        match suite_result {
+            Ok(_) => return Err(stop_err),
+            Err(run_err) => return Err(anyhow!("{run_err}; cleanup failed: {stop_err}")),
+        }
     }
 
-    print_results_table(&results);
-
-    let report = Report {
-        generated_at_unix_secs: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .context("system clock before unix epoch")?
-            .as_secs(),
-        target,
-        mint_url,
-        results,
-    };
-
-    write_json_report(Path::new(DEFAULT_JSON_REPORT_PATH), &report).await?;
-    mint.stop().await?;
+    let report = suite_result?;
+    let failure_count = report
+        .results
+        .iter()
+        .filter(|result| !result.passed)
+        .count();
+    if failure_count > 0 {
+        return Err(anyhow!("{failure_count} scenario(s) failed"));
+    }
 
     Ok(())
 }
@@ -294,44 +345,81 @@ async fn run_named_scenario(
 
 impl LocalMintHandle {
     async fn start() -> Result<Self> {
-        let port = reserve_local_port()?;
-        let mint_url = format!("http://{DEFAULT_MINT_HOST}:{port}");
-        let work_dir = create_temp_work_dir("compat-runner-cdk-mint")?;
-        let settings = build_zero_fee_settings(&mint_url, port)?;
-        let shutdown = CancellationToken::new();
-        let shutdown_signal = shutdown.clone();
-        let work_dir_for_task = work_dir.clone();
+        let mut last_error = String::new();
 
-        let task = tokio::spawn(async move {
-            cdk_mintd::run_mintd_with_shutdown(
-                &work_dir_for_task,
-                &settings,
-                async move {
-                    shutdown_signal.cancelled().await;
-                },
-                None,
-                None,
-                vec![],
-            )
-            .await
-        });
+        for attempt in 1..=MINT_STARTUP_ATTEMPTS {
+            let port = reserve_local_port()?;
+            let mint_url = format!("http://{DEFAULT_MINT_HOST}:{port}");
+            let work_dir = create_temp_work_dir("compat-runner-cdk-mint")?;
+            let settings = build_zero_fee_settings(&mint_url, port)?;
+            let shutdown = CancellationToken::new();
+            let shutdown_signal = shutdown.clone();
+            let work_dir_for_task = work_dir.clone();
 
-        wait_for_mint_ready(&mint_url, Duration::from_secs(30)).await?;
+            let task = tokio::spawn(async move {
+                cdk_mintd::run_mintd_with_shutdown(
+                    &work_dir_for_task,
+                    &settings,
+                    async move {
+                        shutdown_signal.cancelled().await;
+                    },
+                    None,
+                    None,
+                    vec![],
+                )
+                .await
+            });
 
-        Ok(Self {
-            mint_url,
-            work_dir,
-            shutdown,
-            task,
-        })
+            match wait_for_mint_ready(&mint_url, Duration::from_secs(MINT_STARTUP_TIMEOUT_SECS))
+                .await
+            {
+                Ok(()) => {
+                    return Ok(Self {
+                        mint_url,
+                        work_dir,
+                        shutdown,
+                        task,
+                    });
+                }
+                Err(err) => {
+                    shutdown.cancel();
+                    let task_result = task.await;
+                    let _ = std::fs::remove_dir_all(&work_dir);
+                    last_error =
+                        format!("attempt {attempt} failed: {err}; task_result={task_result:?}");
+                }
+            }
+        }
+
+        Err(anyhow!(
+            "failed to start local CDK mint after {MINT_STARTUP_ATTEMPTS} attempts: {last_error}"
+        ))
     }
 
     async fn stop(self) -> Result<()> {
         self.shutdown.cancel();
 
-        match self.task.await {
+        let task_result = match self.task.await {
             Ok(result) => result,
             Err(err) => Err(anyhow!("mint task join error: {err}")),
+        };
+        let cleanup_result = std::fs::remove_dir_all(&self.work_dir)
+            .or_else(|err| match err.kind() {
+                std::io::ErrorKind::NotFound => Ok(()),
+                _ => Err(err),
+            })
+            .map_err(|err| {
+                anyhow!(
+                    "failed to remove temp work dir {}: {err}",
+                    self.work_dir.display()
+                )
+            });
+
+        match (task_result, cleanup_result) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(task_err), Ok(())) => Err(task_err),
+            (Ok(()), Err(cleanup_err)) => Err(cleanup_err),
+            (Err(task_err), Err(cleanup_err)) => Err(anyhow!("{task_err}; {cleanup_err}")),
         }
     }
 }
@@ -553,13 +641,69 @@ fn add_empty_preimage_and_sign_all_inputs(
     Ok(())
 }
 
+fn error_contains_any(err: &Error, expected_substrings: &[&str]) -> bool {
+    let display = err.to_string();
+    let debug = format!("{err:?}");
+
+    expected_substrings
+        .iter()
+        .any(|substring| display.contains(substring) || debug.contains(substring))
+}
+
 fn expect_swap_failure(
     result: std::result::Result<cdk::nuts::SwapResponse, Error>,
     msg: &str,
 ) -> Result<String> {
     match result {
         Ok(_) => Err(anyhow!("{msg}: swap unexpectedly succeeded")),
-        Err(err) => Ok(err.to_string()),
+        Err(err) => {
+            let expected_substrings = match msg {
+                "unsigned P2PK spend" => EXPECT_SIGNATURE_INVALID,
+                "partial-signature P2PK spend" => EXPECT_SIGNATURE_INVALID,
+                "1-of-2 multisig" => EXPECT_P2PK_OR_SIGNATURE_FAILURE,
+                "invalid multisig" => EXPECT_P2PK_OR_SIGNATURE_FAILURE,
+                "refund before locktime" => EXPECT_SIGNATURE_INVALID,
+                "wrong signer" => EXPECT_SIGNATURE_INVALID,
+                "duplicate signatures" => EXPECT_SIGNATURE_INVALID,
+                "HTLC preimage-only" => EXPECT_WITNESS_NO_SIGNATURES,
+                "HTLC signature-only" => EXPECT_NOT_HTLC_SECRET,
+                "wrong HTLC preimage" => EXPECT_PREIMAGE_INVALID_HEX,
+                "HTLC 1-of-3" => EXPECT_HTLC_SPEND_NOT_MET,
+                "SIG_ALL unsigned" => EXPECT_SIGNATURE_INVALID,
+                "SIG_INPUTS used for SIG_ALL" => EXPECT_SIGNATURE_INVALID,
+                "SIG_ALL 1-of-3" => EXPECT_P2PK_OR_SIGNATURE_FAILURE,
+                "SIG_ALL invalid signers" => EXPECT_P2PK_OR_SIGNATURE_FAILURE,
+                "SIG_ALL wrong signer" => EXPECT_SIGNATURE_INVALID,
+                "SIG_ALL duplicate signatures" => EXPECT_P2PK_OR_SIGNATURE_FAILURE,
+                "SIG_ALL refund before locktime" => EXPECT_SIGNATURE_INVALID,
+                "mixed SIG_ALL data" => EXPECT_SIGALL_INPUT_MISMATCH,
+                "mixed SIG_ALL kind" => EXPECT_SIGALL_INPUT_MISMATCH,
+                "mixed SIG_ALL tags" => EXPECT_SIGALL_INPUT_MISMATCH,
+                "SIG_ALL 1-of-3 before locktime" => EXPECT_P2PK_OR_SIGNATURE_FAILURE,
+                "1-of-2 refund multisig" => EXPECT_P2PK_OR_SIGNATURE_FAILURE,
+                "tampered output amounts" => EXPECT_SIGNATURE_INVALID,
+                "SIG_ALL HTLC preimage-only" => EXPECT_SIGALL_WITNESS_NO_SIGNATURES,
+                "SIG_ALL HTLC signature-only" => EXPECT_HTLC_SPEND_NOT_MET,
+                "SIG_ALL HTLC wrong preimage" => EXPECT_HTLC_SPEND_NOT_MET,
+                "SIG_ALL HTLC 1-of-3" => EXPECT_HTLC_SPEND_NOT_MET,
+                _ => {
+                    return Err(anyhow!(
+                        "{msg}: no expected error mapping for actual error `{}`",
+                        err
+                    ));
+                }
+            };
+
+            if error_contains_any(&err, expected_substrings) {
+                Ok(err.to_string())
+            } else {
+                Err(anyhow!(
+                    "{msg}: unexpected error `{}`; expected one of {:?}",
+                    err,
+                    expected_substrings
+                ))
+            }
+        }
     }
 }
 
@@ -1377,6 +1521,135 @@ async fn scenario_p2pk_sigall_mixed_proofs_different_data_fail(mint_url: String)
     expect_swap_success(ctx_bob.client.post_swap(bob_only).await, "bob-only SIG_ALL")?;
 
     Ok(format!("mixed SIG_ALL proofs rejected: {error}"))
+}
+
+async fn scenario_p2pk_sigall_mixed_proofs_different_kind_fail(mint_url: String) -> Result<String> {
+    let ctx_p2pk = TestContext::with_funds(&mint_url, standard_input_amount()).await?;
+    let alice = create_test_keypair();
+    let p2pk_conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: None,
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigAll,
+            num_sigs_refund: None,
+        }),
+    );
+    let p2pk_locked =
+        lock_proofs_with_conditions(&ctx_p2pk, standard_input_amount(), &p2pk_conditions).await?;
+
+    let ctx_htlc = TestContext::with_funds(&mint_url, standard_input_amount()).await?;
+    let htlc_fixture = create_test_hash_and_preimage();
+    let htlc_conditions = SpendingConditions::new_htlc_hash(
+        &htlc_fixture.hash,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: Some(vec![alice.public]),
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigAll,
+            num_sigs_refund: None,
+        }),
+    )?;
+    let htlc_locked =
+        lock_proofs_with_conditions(&ctx_htlc, standard_input_amount(), &htlc_conditions).await?;
+
+    let client = HttpClient::new(MintUrl::from_str(&mint_url)?, None);
+    let keyset_id = ctx_p2pk.active_keyset_id().await?;
+    let mut mixed_proofs = p2pk_locked.proofs.clone();
+    mixed_proofs.extend(htlc_locked.proofs.clone());
+    let mixed_amount = standard_input_amount() + standard_input_amount();
+    let mixed_request = SwapRequest::new(mixed_proofs, random_outputs(keyset_id, mixed_amount)?);
+    let error = expect_swap_failure(client.post_swap(mixed_request).await, "mixed SIG_ALL kind")?;
+
+    let mut p2pk_only = SwapRequest::new(
+        p2pk_locked.proofs,
+        random_outputs(p2pk_locked.keyset_id, standard_input_amount())?,
+    );
+    p2pk_only.sign_sig_all(alice.secret.clone())?;
+    expect_swap_success(
+        ctx_p2pk.client.post_swap(p2pk_only).await,
+        "p2pk-only mixed-kind control",
+    )?;
+
+    let mut htlc_only = SwapRequest::new(
+        htlc_locked.proofs,
+        random_outputs(htlc_locked.keyset_id, standard_input_amount())?,
+    );
+    htlc_only.inputs_mut()[0].add_preimage(htlc_fixture.preimage);
+    htlc_only.sign_sig_all(alice.secret)?;
+    expect_swap_success(
+        ctx_htlc.client.post_swap(htlc_only).await,
+        "htlc-only mixed-kind control",
+    )?;
+
+    Ok(format!("mixed SIG_ALL proof kinds rejected: {error}"))
+}
+
+async fn scenario_p2pk_sigall_mixed_proofs_different_tags_fail(mint_url: String) -> Result<String> {
+    let ctx_plain = TestContext::with_funds(&mint_url, standard_input_amount()).await?;
+    let alice = create_test_keypair();
+    let plain_conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions {
+            locktime: None,
+            pubkeys: None,
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigAll,
+            num_sigs_refund: None,
+        }),
+    );
+    let plain_locked =
+        lock_proofs_with_conditions(&ctx_plain, standard_input_amount(), &plain_conditions).await?;
+
+    let ctx_tagged = TestContext::with_funds(&mint_url, standard_input_amount()).await?;
+    let tagged_conditions = SpendingConditions::new_p2pk(
+        alice.public,
+        Some(Conditions {
+            locktime: Some(cdk::util::unix_time() + 3600),
+            pubkeys: None,
+            refund_keys: None,
+            num_sigs: None,
+            sig_flag: SigFlag::SigAll,
+            num_sigs_refund: None,
+        }),
+    );
+    let tagged_locked =
+        lock_proofs_with_conditions(&ctx_tagged, standard_input_amount(), &tagged_conditions)
+            .await?;
+
+    let client = HttpClient::new(MintUrl::from_str(&mint_url)?, None);
+    let keyset_id = ctx_plain.active_keyset_id().await?;
+    let mut mixed_proofs = plain_locked.proofs.clone();
+    mixed_proofs.extend(tagged_locked.proofs.clone());
+    let mixed_amount = standard_input_amount() + standard_input_amount();
+    let mixed_request = SwapRequest::new(mixed_proofs, random_outputs(keyset_id, mixed_amount)?);
+    let error = expect_swap_failure(client.post_swap(mixed_request).await, "mixed SIG_ALL tags")?;
+
+    let mut plain_only = SwapRequest::new(
+        plain_locked.proofs,
+        random_outputs(plain_locked.keyset_id, standard_input_amount())?,
+    );
+    plain_only.sign_sig_all(alice.secret.clone())?;
+    expect_swap_success(
+        ctx_plain.client.post_swap(plain_only).await,
+        "plain-only mixed-tags control",
+    )?;
+
+    let mut tagged_only = SwapRequest::new(
+        tagged_locked.proofs,
+        random_outputs(tagged_locked.keyset_id, standard_input_amount())?,
+    );
+    tagged_only.sign_sig_all(alice.secret)?;
+    expect_swap_success(
+        ctx_tagged.client.post_swap(tagged_only).await,
+        "tagged-only mixed-tags control",
+    )?;
+
+    Ok(format!("mixed SIG_ALL proof tags rejected: {error}"))
 }
 
 async fn scenario_p2pk_sigall_multisig_before_locktime(mint_url: String) -> Result<String> {

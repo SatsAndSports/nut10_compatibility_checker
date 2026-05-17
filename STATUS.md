@@ -149,6 +149,9 @@ Current behavior:
 - creates a fresh wallet context per scenario
 - prints a terminal results table
 - writes a JSON report file
+- exits non-zero if any scenario fails
+- removes the temporary mint work directory during shutdown
+- retries local mint startup across fresh ports
 
 The first implemented scenarios are:
 
@@ -164,10 +167,12 @@ The current swap coverage now includes:
 - SIG_ALL HTLC scenarios
 - locktime and refund-path swap scenarios
 - mixed-input and tampered-output SIG_ALL negatives
+- explicit mixed-data, mixed-kind, and mixed-tags SIG_ALL negatives
 
 Current verification state:
 
 - the expanded swap suite passes against the embedded local CDK mint
+- negative scenarios now assert expected error classes/messages rather than accepting any failure
 
 ## Next Steps
 
@@ -175,6 +180,7 @@ Current verification state:
 - add melt scenarios
 - expand toward the broader CDK NUT-10 matrix
 - preserve parity notes between runner scenario names and the original CDK test files
+- decide whether to rename runner scenarios to match CDK test function names more directly
 
 ## Decisions Made
 
@@ -187,6 +193,8 @@ Current verification state:
 - embed local CDK mint startup through `cdk-mintd::run_mintd_with_shutdown(...)`
 - reuse one local mint per runner invocation and create a fresh wallet context per scenario
 - complete swap coverage first, then move to melt coverage
+- fail the runner process if any scenario fails, even though JSON output is still emitted
+- treat negative tests as protocol assertions with expected error matching, not just generic failure detection
 
 ## Open Questions
 
