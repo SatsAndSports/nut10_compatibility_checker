@@ -1,0 +1,3 @@
+# Ignore upstream cloned repositories
+/cdk/
+/nutshell/
