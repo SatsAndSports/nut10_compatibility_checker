@@ -3,19 +3,21 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow};
 use bip39::Mnemonic;
+use clap::{Parser, ValueEnum};
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::{blind_message, construct_proofs};
 use cdk::mint_url::MintUrl;
 use cdk::nuts::nut10::Secret as Nut10Secret;
 use cdk::nuts::{
     BlindedMessage, Conditions, CurrencyUnit, Id, Keys, MeltQuoteBolt11Request, MeltQuoteState,
-    MeltRequest, PaymentMethod, PreMintSecrets, Proof, ProofsMethods, PublicKey, SecretKey,
-    SigFlag, SpendingConditionVerification, SpendingConditions, SwapRequest,
+    MeltRequest, MintQuoteState, MintRequest, PaymentMethod, PreMintSecrets, Proof,
+    ProofsMethods, PublicKey, SecretKey, SigFlag, SpendingConditionVerification,
+    SpendingConditions, SwapRequest,
 };
 use cdk::wallet::{HttpClient, MintConnector, Wallet, WalletBuilder};
 use cdk::{Amount, Error, MeltQuoteCreateResponse, MeltQuoteRequest, MeltQuoteResponse, StreamExt};
@@ -29,23 +31,48 @@ const DEFAULT_MINT_HOST: &str = "127.0.0.1";
 const MINT_STARTUP_ATTEMPTS: u8 = 5;
 const MINT_STARTUP_TIMEOUT_SECS: u64 = 5;
 
-const EXPECT_SIGNATURE_INVALID: &[&str] = &["Signature missing or invalid"];
-const EXPECT_WITNESS_NO_SIGNATURES: &[&str] = &["Witness did not provide signatures"];
+const EXPECT_SIGNATURE_INVALID: &[&str] = &[
+    "Signature missing or invalid",
+    "signature threshold not met",
+    "Witness is missing for p2pk signature",
+    "no witness in proof",
+];
+const EXPECT_WITNESS_NO_SIGNATURES: &[&str] =
+    &["Witness did not provide signatures", "no signatures in proof"];
 const EXPECT_SIGALL_WITNESS_NO_SIGNATURES: &[&str] = &[
     "Witness signatures not provided",
     "Witness did not provide signatures",
+    "Witness is missing for htlc preimage",
 ];
-const EXPECT_NOT_HTLC_SECRET: &[&str] = &["Secret is not a HTLC secret"];
-const EXPECT_PREIMAGE_INVALID_HEX: &[&str] = &["Preimage must be valid hex encoding"];
+const EXPECT_NOT_HTLC_SECRET: &[&str] = &[
+    "Secret is not a HTLC secret",
+    "no HTLC preimage provided",
+];
+const EXPECT_PREIMAGE_INVALID_HEX: &[&str] = &[
+    "Preimage must be valid hex encoding",
+    "HTLC preimage must be 64 characters hex.",
+];
 const EXPECT_HTLC_SPEND_NOT_MET: &[&str] = &[
     "HTLC spend conditions are not met",
     "P2PK spend conditions are not met",
+    "no HTLC preimage provided",
+    "Witness is missing for htlc preimage",
+    "not enough pubkeys",
+    "HTLC preimage must be 64 characters hex.",
 ];
 const EXPECT_P2PK_OR_SIGNATURE_FAILURE: &[&str] = &[
     "P2PK spend conditions are not met",
     "Signature missing or invalid",
+    "signature threshold not met",
+    "not enough pubkeys",
+    "Witness is missing for p2pk signature",
+    "no witness in proof",
 ];
-const EXPECT_SIGALL_INPUT_MISMATCH: &[&str] = &["Spend conditions are not met"];
+const EXPECT_SIGALL_INPUT_MISMATCH: &[&str] = &[
+    "Spend conditions are not met",
+    "not all secrets are equal.",
+    "Witness is missing for htlc preimage",
+];
 
 fn standard_input_amount() -> Amount {
     Amount::from(10)
@@ -89,6 +116,8 @@ struct LocalMintHandle {
 struct TestContext {
     wallet: Wallet,
     client: HttpClient,
+    manual_http_funding: bool,
+    funded_proofs: Arc<Mutex<Vec<Proof>>>,
 }
 
 struct LockedProofs {
@@ -113,20 +142,68 @@ struct MeltQuoteInfo {
     fee_reserve: Amount,
 }
 
+#[derive(Clone)]
 struct TargetProfile {
     name: String,
     mint_url: String,
     supports_fakewallet_melt: bool,
+    manual_http_funding: bool,
+}
+
+static TARGET_PROFILE: OnceLock<TargetProfile> = OnceLock::new();
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum Suite {
+    Swap,
+    Melt,
+    All,
+}
+
+#[derive(Debug, Parser)]
+struct Args {
+    /// External mint URL. If omitted, the runner starts an embedded local CDK mint.
+    #[arg(long)]
+    mint_url: Option<String>,
+
+    /// Target label used in reports.
+    #[arg(long)]
+    target_name: Option<String>,
+
+    /// Which scenario set to run.
+    #[arg(long, value_enum, default_value_t = Suite::All)]
+    suite: Suite,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mint = LocalMintHandle::start().await?;
-    let target = TargetProfile {
-        name: "cdk".to_string(),
-        mint_url: mint.mint_url.clone(),
-        supports_fakewallet_melt: true,
+    let args = Args::parse();
+    let embedded_mint = if args.mint_url.is_none() {
+        Some(LocalMintHandle::start().await?)
+    } else {
+        None
     };
+    let target = match (&args.mint_url, &embedded_mint) {
+        (Some(mint_url), _) => TargetProfile {
+            name: args
+                .target_name
+                .clone()
+                .unwrap_or_else(|| "external".to_string()),
+            mint_url: mint_url.clone(),
+            supports_fakewallet_melt: false,
+            manual_http_funding: true,
+        },
+        (None, Some(mint)) => TargetProfile {
+            name: args
+                .target_name
+                .clone()
+                .unwrap_or_else(|| "cdk".to_string()),
+            mint_url: mint.mint_url.clone(),
+            supports_fakewallet_melt: true,
+            manual_http_funding: false,
+        },
+        (None, None) => return Err(anyhow!("internal error: no mint target available")),
+    };
+    let _ = TARGET_PROFILE.set(target.clone());
 
     let suite_result: Result<Report> = async {
         let scenarios: Vec<(&str, Box<dyn FnOnce(String) -> ScenarioFuture + Send>)> = vec![
@@ -342,7 +419,9 @@ async fn main() -> Result<()> {
         let mut results = Vec::with_capacity(scenarios.len());
 
         for (name, scenario) in scenarios {
-            results.push(run_named_scenario(name, &target, scenario).await);
+            if scenario_in_suite(name, args.suite) {
+                results.push(run_named_scenario(name, &target, scenario).await);
+            }
         }
 
         print_results_table(&results);
@@ -363,7 +442,10 @@ async fn main() -> Result<()> {
     }
     .await;
 
-    let stop_result = mint.stop().await;
+    let stop_result = match embedded_mint {
+        Some(mint) => mint.stop().await,
+        None => Ok(()),
+    };
 
     if let Err(stop_err) = stop_result {
         match suite_result {
@@ -436,6 +518,14 @@ async fn run_named_scenario(
 
 fn scenario_requires_fakewallet_melt(name: &str) -> bool {
     name.starts_with("melt_")
+}
+
+fn scenario_in_suite(name: &str, suite: Suite) -> bool {
+    match suite {
+        Suite::Swap => !name.starts_with("melt_"),
+        Suite::Melt => name.starts_with("melt_"),
+        Suite::All => true,
+    }
 }
 
 impl LocalMintHandle {
@@ -522,6 +612,10 @@ impl LocalMintHandle {
 impl TestContext {
     async fn new(mint_url: &str) -> Result<Self> {
         let mint_url = MintUrl::from_str(mint_url)?;
+        let manual_http_funding = TARGET_PROFILE
+            .get()
+            .map(|target| target.manual_http_funding)
+            .unwrap_or(false);
         let seed = Mnemonic::generate(12)?.to_seed_normalized("");
         let localstore = Arc::new(cdk_sqlite::wallet::memory::empty().await?);
         let wallet = WalletBuilder::new()
@@ -532,7 +626,12 @@ impl TestContext {
             .build()?;
         let client = HttpClient::new(mint_url, None);
 
-        Ok(Self { wallet, client })
+        Ok(Self {
+            wallet,
+            client,
+            manual_http_funding,
+            funded_proofs: Arc::new(Mutex::new(Vec::new())),
+        })
     }
 
     async fn with_funds(mint_url: &str, amount: Amount) -> Result<Self> {
@@ -542,6 +641,22 @@ impl TestContext {
     }
 
     async fn fund_wallet(&self, amount: Amount) -> Result<()> {
+        if self.manual_http_funding {
+            let proofs = self.manual_http_fund_proofs(amount).await?;
+            let funded_amount = proofs.total_amount()?;
+            if funded_amount != amount {
+                return Err(anyhow!(
+                    "expected funded amount {amount}, got {funded_amount}"
+                ));
+            }
+            let mut stored = self
+                .funded_proofs
+                .lock()
+                .map_err(|_| anyhow!("funded proofs mutex poisoned"))?;
+            stored.extend(proofs);
+            return Ok(());
+        }
+
         let quote = self
             .wallet
             .mint_quote(PaymentMethod::BOLT11, Some(amount), None, None)
@@ -574,7 +689,71 @@ impl TestContext {
     }
 
     async fn wallet_proofs(&self) -> Result<Vec<Proof>> {
+        if self.manual_http_funding {
+            let stored = self
+                .funded_proofs
+                .lock()
+                .map_err(|_| anyhow!("funded proofs mutex poisoned"))?;
+            return Ok(stored.clone());
+        }
+
         self.wallet.get_unspent_proofs().await.map_err(Into::into)
+    }
+
+    async fn manual_http_fund_proofs(&self, amount: Amount) -> Result<Vec<Proof>> {
+        let quote = self
+            .wallet
+            .mint_quote(PaymentMethod::BOLT11, Some(amount), None, None)
+            .await?;
+
+        let mut attempts = 0u8;
+        loop {
+            let current = self.wallet.check_mint_quote_status(&quote.id).await?;
+            if matches!(current.state, MintQuoteState::Paid | MintQuoteState::Issued) {
+                break;
+            }
+
+            attempts = attempts.saturating_add(1);
+            if attempts > 100 {
+                return Err(anyhow!(
+                    "timed out waiting for external mint quote {} to become payable",
+                    quote.id
+                ));
+            }
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        let active_keyset_id = self.active_keyset_id().await?;
+        let keyset_keys = self.active_keyset_keys().await?;
+        let premint = PreMintSecrets::random(
+            active_keyset_id,
+            amount,
+            &SplitTarget::default(),
+            &standard_fee_and_amounts(),
+        )?;
+
+        let mut request = MintRequest {
+            quote: quote.id.clone(),
+            outputs: premint.blinded_messages(),
+            signature: None,
+        };
+
+        request.sign(
+            quote
+                .secret_key
+                .clone()
+                .ok_or_else(|| anyhow!("mint quote missing signing key"))?,
+        )?;
+
+        let response = self.client.post_mint(&PaymentMethod::BOLT11, request).await?;
+
+        Ok(construct_proofs(
+            response.signatures,
+            premint.rs(),
+            premint.secrets(),
+            &keyset_keys,
+        )?)
     }
 }
 

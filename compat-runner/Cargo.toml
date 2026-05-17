@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1"
 bip39 = { version = "2.0", features = ["rand"] }
+clap = { version = "4.5", features = ["derive"] }
 cdk = { path = "../cdk/crates/cdk", default-features = false, features = ["mint", "wallet"] }
 cdk-fake-wallet = { path = "../cdk/crates/cdk-fake-wallet" }
 cdk-mintd = { path = "../cdk/crates/cdk-mintd", default-features = false, features = ["sqlite", "fakewallet"] }

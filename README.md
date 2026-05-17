@@ -157,14 +157,14 @@ You should see `nuts` support including:
 
 ## External Mint Mode
 
-Planned runner CLI shape:
+Current runner CLI shape:
 
 ```bash
 cd compat-runner
 cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap
 ```
 
-Planned behavior:
+CLI behavior:
 
 - `cargo run`
   default embedded CDK mode
@@ -175,10 +175,36 @@ Planned behavior:
 - `--suite swap|melt|all`
   suite selection
 
-Initial external target plan:
+Examples:
+
+```bash
+# embedded CDK, full suite
+cd compat-runner
+cargo run
+```
+
+```bash
+# embedded CDK, swap only
+cd compat-runner
+cargo run -- --suite swap
+```
+
+```bash
+# external Nutshell, swap only
+cd compat-runner
+cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap
+```
+
+Current external target notes:
 
 - start with `swap`
 - keep `melt` fakewallet-scoped until invoice/payment setup is abstracted by target
+
+Current Nutshell status:
+
+- external proof funding now works through explicit HTTP quote polling and minting
+- non-SIG_ALL swap scenarios largely pass
+- remaining failures are concentrated around SIG_ALL behavior and should be treated as real compatibility work items unless proven otherwise
 
 ## Notes
 

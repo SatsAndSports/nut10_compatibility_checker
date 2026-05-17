@@ -154,6 +154,7 @@ Current behavior:
 - removes the temporary mint work directory during shutdown
 - retries local mint startup across fresh ports
 - creates fresh fake BOLT11 invoices for melt scenarios
+- supports external mint URL mode with suite filtering
 
 The first implemented scenarios are:
 
@@ -211,15 +212,18 @@ Current verification state:
 - negative scenarios now assert expected error classes/messages rather than accepting any failure
 - the melt suite also passes against the embedded local CDK mint
 - the review-driven melt polling and target-scoping fixes are implemented and verified
+- external target mode works against a running Nutshell mint for swap execution
+- external proof funding now uses explicit HTTP quote polling and minting instead of websocket-driven proof streaming
+- current Nutshell swap results show broad non-SIG_ALL compatibility, with remaining failures concentrated around SIG_ALL behavior
 
 ## Next Steps
 
-- add CLI arguments for target selection and report path
 - expand toward the broader CDK NUT-10 matrix
 - preserve parity notes between runner scenario names and the original CDK test files
 - decide whether to rename runner scenarios to match CDK test function names more directly
 - decide whether to keep the current split scenario naming or add an alternate reporting layer keyed by exact upstream CDK test names
-- start evaluating the same suite against Nutshell
+- analyze and categorize the remaining Nutshell SIG_ALL swap failures
+- decide whether any external-target expectations should become target-specific witness/message-shape adapters or remain as compatibility failures
 - replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 
 ## Decisions Made

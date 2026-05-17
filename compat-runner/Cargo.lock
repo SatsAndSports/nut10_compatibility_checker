@@ -794,6 +794,7 @@ dependencies = [
  "cdk-fake-wallet",
  "cdk-mintd",
  "cdk-sqlite",
+ "clap",
  "reqwest",
  "serde",
  "serde_json",
