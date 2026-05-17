@@ -155,6 +155,7 @@ Current behavior:
 - retries local mint startup across fresh ports
 - creates fresh fake BOLT11 invoices for melt scenarios
 - supports external mint URL mode with suite filtering
+- supports `SIG_ALL` signing modes: `standard` and `legacy`
 
 The first implemented scenarios are:
 
@@ -215,6 +216,7 @@ Current verification state:
 - external target mode works against a running Nutshell mint for swap execution
 - external proof funding now uses explicit HTTP quote polling and minting instead of websocket-driven proof streaming
 - current Nutshell swap results show broad non-SIG_ALL compatibility, with remaining failures concentrated around SIG_ALL behavior
+- legacy `SIG_ALL` mode significantly improves Nutshell swap compatibility versus standard mode
 
 ## Next Steps
 
@@ -222,7 +224,7 @@ Current verification state:
 - preserve parity notes between runner scenario names and the original CDK test files
 - decide whether to rename runner scenarios to match CDK test function names more directly
 - decide whether to keep the current split scenario naming or add an alternate reporting layer keyed by exact upstream CDK test names
-- analyze and categorize the remaining Nutshell SIG_ALL swap failures
+- analyze and categorize the remaining Nutshell legacy-mode SIG_ALL swap failures
 - decide whether any external-target expectations should become target-specific witness/message-shape adapters or remain as compatibility failures
 - replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 
@@ -241,6 +243,7 @@ Current verification state:
 - treat negative tests as protocol assertions with expected error matching, not just generic failure detection
 - keep the embedded mint zero-input-fee, but make melt funding quote-driven and target-behavior-aware
 - keep current melt scenarios explicitly fakewallet-scoped until a portable invoice/payment abstraction exists
+- keep `standard` as the default `SIG_ALL` mode and expose `legacy` as an explicit interoperability option
 
 ## Open Questions
 

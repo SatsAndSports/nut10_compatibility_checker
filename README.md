@@ -174,6 +174,8 @@ CLI behavior:
   label for reports
 - `--suite swap|melt|all`
   suite selection
+- `--sigall-mode standard|legacy`
+  choose CDK/spec `SIG_ALL` signing or legacy Nutshell-style signing
 
 Examples:
 
@@ -195,6 +197,12 @@ cd compat-runner
 cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap
 ```
 
+```bash
+# external Nutshell, swap only, legacy SIG_ALL mode
+cd compat-runner
+cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap --sigall-mode legacy
+```
+
 Current external target notes:
 
 - start with `swap`
@@ -204,7 +212,17 @@ Current Nutshell status:
 
 - external proof funding now works through explicit HTTP quote polling and minting
 - non-SIG_ALL swap scenarios largely pass
-- remaining failures are concentrated around SIG_ALL behavior and should be treated as real compatibility work items unless proven otherwise
+- `--sigall-mode legacy` improves Nutshell compatibility substantially compared to the default `standard` mode
+- remaining failures in legacy mode are concentrated in a smaller SIG_ALL subset, especially HTLC SIG_ALL and some post-locktime/tamper cases
+
+About `SIG_ALL` modes:
+
+- `standard`
+  Uses the current CDK/spec-style aggregated message construction.
+- `legacy`
+  Uses the older Nutshell-style aggregated message construction for runner-side `SIG_ALL` signatures.
+
+The `legacy` mode exists as a diagnostic and interoperability mode. The default remains `standard`.
 
 ## Notes
 

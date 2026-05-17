@@ -17,7 +17,7 @@ use cdk::nuts::{
     BlindedMessage, Conditions, CurrencyUnit, Id, Keys, MeltQuoteBolt11Request, MeltQuoteState,
     MeltRequest, MintQuoteState, MintRequest, PaymentMethod, PreMintSecrets, Proof,
     ProofsMethods, PublicKey, SecretKey, SigFlag, SpendingConditionVerification,
-    SpendingConditions, SwapRequest,
+    SpendingConditions, SwapRequest, Witness, P2PKWitness,
 };
 use cdk::wallet::{HttpClient, MintConnector, Wallet, WalletBuilder};
 use cdk::{Amount, Error, MeltQuoteCreateResponse, MeltQuoteRequest, MeltQuoteResponse, StreamExt};
@@ -151,12 +151,19 @@ struct TargetProfile {
 }
 
 static TARGET_PROFILE: OnceLock<TargetProfile> = OnceLock::new();
+static SIGALL_MODE: OnceLock<SigAllMode> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Suite {
     Swap,
     Melt,
     All,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum SigAllMode {
+    Standard,
+    Legacy,
 }
 
 #[derive(Debug, Parser)]
@@ -172,6 +179,10 @@ struct Args {
     /// Which scenario set to run.
     #[arg(long, value_enum, default_value_t = Suite::All)]
     suite: Suite,
+
+    /// SIG_ALL signing mode: standard CDK/spec or legacy Nutshell-style.
+    #[arg(long, value_enum, default_value_t = SigAllMode::Standard)]
+    sigall_mode: SigAllMode,
 }
 
 #[tokio::main]
@@ -204,6 +215,7 @@ async fn main() -> Result<()> {
         (None, None) => return Err(anyhow!("internal error: no mint target available")),
     };
     let _ = TARGET_PROFILE.set(target.clone());
+    let _ = SIGALL_MODE.set(args.sigall_mode);
 
     let suite_result: Result<Report> = async {
         let scenarios: Vec<(&str, Box<dyn FnOnce(String) -> ScenarioFuture + Send>)> = vec![
@@ -526,6 +538,81 @@ fn scenario_in_suite(name: &str, suite: Suite) -> bool {
         Suite::Melt => name.starts_with("melt_"),
         Suite::All => true,
     }
+}
+
+fn current_sigall_mode() -> SigAllMode {
+    SIGALL_MODE.get().copied().unwrap_or(SigAllMode::Standard)
+}
+
+trait SigAllRequest: SpendingConditionVerification {
+    fn first_input_mut(&mut self) -> Result<&mut Proof>;
+    fn legacy_sig_all_msg_to_sign(&self) -> String;
+}
+
+impl SigAllRequest for SwapRequest {
+    fn first_input_mut(&mut self) -> Result<&mut Proof> {
+        self.inputs_mut()
+            .first_mut()
+            .ok_or_else(|| anyhow!("swap request has no inputs"))
+    }
+
+    fn legacy_sig_all_msg_to_sign(&self) -> String {
+        let mut msg = String::new();
+        for proof in self.inputs() {
+            msg.push_str(&proof.secret.to_string());
+        }
+        for output in self.outputs() {
+            msg.push_str(&output.blinded_secret.to_hex());
+        }
+        msg
+    }
+}
+
+impl SigAllRequest for MeltRequest<String> {
+    fn first_input_mut(&mut self) -> Result<&mut Proof> {
+        self.inputs_mut()
+            .first_mut()
+            .ok_or_else(|| anyhow!("melt request has no inputs"))
+    }
+
+    fn legacy_sig_all_msg_to_sign(&self) -> String {
+        let mut msg = String::new();
+        for proof in self.inputs() {
+            msg.push_str(&proof.secret.to_string());
+        }
+        if let Some(outputs) = self.outputs() {
+            for output in outputs {
+                msg.push_str(&output.blinded_secret.to_hex());
+            }
+        }
+        msg.push_str(self.quote());
+        msg
+    }
+}
+
+fn sign_sig_all_request<T>(request: &mut T, secret_key: SecretKey) -> Result<()>
+where
+    T: SigAllRequest,
+{
+    let message = match current_sigall_mode() {
+        SigAllMode::Standard => request.sig_all_msg_to_sign(),
+        SigAllMode::Legacy => request.legacy_sig_all_msg_to_sign(),
+    };
+    let signature = secret_key.sign(message.as_bytes())?;
+    let first_input = request.first_input_mut()?;
+
+    match first_input.witness.as_mut() {
+        Some(witness) => {
+            witness.add_signatures(vec![signature.to_string()]);
+        }
+        None => {
+            let mut witness = Witness::P2PKWitness(P2PKWitness::default());
+            witness.add_signatures(vec![signature.to_string()]);
+            first_input.witness = Some(witness);
+        }
+    }
+
+    Ok(())
 }
 
 impl LocalMintHandle {
@@ -1691,20 +1778,20 @@ async fn scenario_p2pk_sigall_multisig_2of3(mint_url: String) -> Result<String> 
     let outputs = random_outputs(locked.keyset_id, standard_input_amount())?;
 
     let mut one_sig = SwapRequest::new(locked.proofs.clone(), outputs.clone());
-    one_sig.sign_sig_all(alice.secret.clone())?;
+    sign_sig_all_request(&mut one_sig, alice.secret.clone())?;
     expect_swap_failure(ctx.client.post_swap(one_sig).await, "SIG_ALL 1-of-3")?;
 
     let mut invalid = SwapRequest::new(locked.proofs.clone(), outputs.clone());
-    invalid.sign_sig_all(dave.secret.clone())?;
-    invalid.sign_sig_all(eve.secret.clone())?;
+    sign_sig_all_request(&mut invalid, dave.secret.clone())?;
+    sign_sig_all_request(&mut invalid, eve.secret.clone())?;
     expect_swap_failure(
         ctx.client.post_swap(invalid).await,
         "SIG_ALL invalid signers",
     )?;
 
     let mut valid = SwapRequest::new(locked.proofs, outputs);
-    valid.sign_sig_all(alice.secret)?;
-    valid.sign_sig_all(bob.secret)?;
+    sign_sig_all_request(&mut valid, alice.secret)?;
+    sign_sig_all_request(&mut valid, bob.secret)?;
     expect_swap_success(ctx.client.post_swap(valid).await, "SIG_ALL valid 2-of-3")?;
     Ok("SIG_ALL 2-of-3 multisig enforced correctly".to_string())
 }
@@ -1729,7 +1816,7 @@ async fn scenario_p2pk_sigall_wrong_signer_fails(mint_url: String) -> Result<Str
         locked.proofs,
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
-    request.sign_sig_all(bob.secret)?;
+    sign_sig_all_request(&mut request, bob.secret)?;
     let error = expect_swap_failure(ctx.client.post_swap(request).await, "SIG_ALL wrong signer")?;
     Ok(format!("wrong SIG_ALL signer rejected: {error}"))
 }
@@ -1754,8 +1841,8 @@ async fn scenario_p2pk_sigall_duplicate_signatures_fail(mint_url: String) -> Res
         locked.proofs,
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
-    request.sign_sig_all(alice.secret.clone())?;
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret.clone())?;
+    sign_sig_all_request(&mut request, alice.secret)?;
     let error = expect_swap_failure(
         ctx.client.post_swap(request).await,
         "SIG_ALL duplicate signatures",
@@ -1784,14 +1871,14 @@ async fn scenario_p2pk_sigall_locktime_before_expiry_primary_only(
     let outputs = random_outputs(locked.keyset_id, standard_input_amount())?;
 
     let mut refund = SwapRequest::new(locked.proofs.clone(), outputs.clone());
-    refund.sign_sig_all(bob.secret.clone())?;
+    sign_sig_all_request(&mut refund, bob.secret.clone())?;
     expect_swap_failure(
         ctx.client.post_swap(refund).await,
         "SIG_ALL refund before locktime",
     )?;
 
     let mut primary = SwapRequest::new(locked.proofs, outputs);
-    primary.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut primary, alice.secret)?;
     expect_swap_success(
         ctx.client.post_swap(primary).await,
         "SIG_ALL primary before locktime",
@@ -1821,7 +1908,7 @@ async fn scenario_p2pk_sigall_locktime_after_expiry_primary_still_works(
         locked.proofs,
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
-    primary.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut primary, alice.secret)?;
     expect_swap_success(
         ctx.client.post_swap(primary).await,
         "SIG_ALL primary after locktime",
@@ -1882,8 +1969,8 @@ async fn scenario_p2pk_sigall_multisig_locktime_primary_still_works(
         locked.proofs,
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
-    request.sign_sig_all(alice.secret)?;
-    request.sign_sig_all(bob.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
+    sign_sig_all_request(&mut request, bob.secret)?;
     expect_swap_success(
         ctx.client.post_swap(request).await,
         "SIG_ALL primary multisig after locktime",
@@ -1931,15 +2018,15 @@ async fn scenario_p2pk_sigall_mixed_proofs_different_data_fail(mint_url: String)
     mixed_proofs.extend(bob_locked.proofs.clone());
     let mut mixed_request =
         SwapRequest::new(mixed_proofs, random_outputs(keyset_id, mixed_amount)?);
-    mixed_request.sign_sig_all(alice.secret.clone())?;
-    mixed_request.sign_sig_all(bob.secret.clone())?;
+    sign_sig_all_request(&mut mixed_request, alice.secret.clone())?;
+    sign_sig_all_request(&mut mixed_request, bob.secret.clone())?;
     let error = expect_swap_failure(client.post_swap(mixed_request).await, "mixed SIG_ALL data")?;
 
     let mut alice_only = SwapRequest::new(
         alice_locked.proofs,
         random_outputs(alice_locked.keyset_id, standard_input_amount())?,
     );
-    alice_only.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut alice_only, alice.secret)?;
     expect_swap_success(
         ctx_alice.client.post_swap(alice_only).await,
         "alice-only SIG_ALL",
@@ -1949,7 +2036,7 @@ async fn scenario_p2pk_sigall_mixed_proofs_different_data_fail(mint_url: String)
         bob_locked.proofs,
         random_outputs(bob_locked.keyset_id, standard_input_amount())?,
     );
-    bob_only.sign_sig_all(bob.secret)?;
+    sign_sig_all_request(&mut bob_only, bob.secret)?;
     expect_swap_success(ctx_bob.client.post_swap(bob_only).await, "bob-only SIG_ALL")?;
 
     Ok(format!("mixed SIG_ALL proofs rejected: {error}"))
@@ -2000,7 +2087,7 @@ async fn scenario_p2pk_sigall_mixed_proofs_different_kind_fail(mint_url: String)
         p2pk_locked.proofs,
         random_outputs(p2pk_locked.keyset_id, standard_input_amount())?,
     );
-    p2pk_only.sign_sig_all(alice.secret.clone())?;
+    sign_sig_all_request(&mut p2pk_only, alice.secret.clone())?;
     expect_swap_success(
         ctx_p2pk.client.post_swap(p2pk_only).await,
         "p2pk-only mixed-kind control",
@@ -2011,7 +2098,7 @@ async fn scenario_p2pk_sigall_mixed_proofs_different_kind_fail(mint_url: String)
         random_outputs(htlc_locked.keyset_id, standard_input_amount())?,
     );
     htlc_only.inputs_mut()[0].add_preimage(htlc_fixture.preimage);
-    htlc_only.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut htlc_only, alice.secret)?;
     expect_swap_success(
         ctx_htlc.client.post_swap(htlc_only).await,
         "htlc-only mixed-kind control",
@@ -2065,7 +2152,7 @@ async fn scenario_p2pk_sigall_mixed_proofs_different_tags_fail(mint_url: String)
         plain_locked.proofs,
         random_outputs(plain_locked.keyset_id, standard_input_amount())?,
     );
-    plain_only.sign_sig_all(alice.secret.clone())?;
+    sign_sig_all_request(&mut plain_only, alice.secret.clone())?;
     expect_swap_success(
         ctx_plain.client.post_swap(plain_only).await,
         "plain-only mixed-tags control",
@@ -2075,7 +2162,7 @@ async fn scenario_p2pk_sigall_mixed_proofs_different_tags_fail(mint_url: String)
         tagged_locked.proofs,
         random_outputs(tagged_locked.keyset_id, standard_input_amount())?,
     );
-    tagged_only.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut tagged_only, alice.secret)?;
     expect_swap_success(
         ctx_tagged.client.post_swap(tagged_only).await,
         "tagged-only mixed-tags control",
@@ -2106,15 +2193,15 @@ async fn scenario_p2pk_sigall_multisig_before_locktime(mint_url: String) -> Resu
     let outputs = random_outputs(locked.keyset_id, standard_input_amount())?;
 
     let mut one_sig = SwapRequest::new(locked.proofs.clone(), outputs.clone());
-    one_sig.sign_sig_all(alice.secret.clone())?;
+    sign_sig_all_request(&mut one_sig, alice.secret.clone())?;
     expect_swap_failure(
         ctx.client.post_swap(one_sig).await,
         "SIG_ALL 1-of-3 before locktime",
     )?;
 
     let mut two_sig = SwapRequest::new(locked.proofs, outputs);
-    two_sig.sign_sig_all(alice.secret)?;
-    two_sig.sign_sig_all(bob.secret)?;
+    sign_sig_all_request(&mut two_sig, alice.secret)?;
+    sign_sig_all_request(&mut two_sig, bob.secret)?;
     expect_swap_success(
         ctx.client.post_swap(two_sig).await,
         "SIG_ALL 2-of-3 before locktime",
@@ -2143,9 +2230,9 @@ async fn scenario_p2pk_sigall_more_signatures_than_required(mint_url: String) ->
         locked.proofs,
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
-    request.sign_sig_all(alice.secret)?;
-    request.sign_sig_all(bob.secret)?;
-    request.sign_sig_all(carol.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
+    sign_sig_all_request(&mut request, bob.secret)?;
+    sign_sig_all_request(&mut request, carol.secret)?;
     expect_swap_success(
         ctx.client.post_swap(request).await,
         "extra valid signatures",
@@ -2173,12 +2260,12 @@ async fn scenario_p2pk_sigall_refund_multisig_2of2(mint_url: String) -> Result<S
     let outputs = random_outputs(locked.keyset_id, standard_input_amount())?;
 
     let mut one = SwapRequest::new(locked.proofs.clone(), outputs.clone());
-    one.sign_sig_all(dave.secret.clone())?;
+    sign_sig_all_request(&mut one, dave.secret.clone())?;
     expect_swap_failure(ctx.client.post_swap(one).await, "1-of-2 refund multisig")?;
 
     let mut both = SwapRequest::new(locked.proofs, outputs);
-    both.sign_sig_all(dave.secret)?;
-    both.sign_sig_all(eve.secret)?;
+    sign_sig_all_request(&mut both, dave.secret)?;
+    sign_sig_all_request(&mut both, eve.secret)?;
     expect_swap_success(ctx.client.post_swap(both).await, "2-of-2 refund multisig")?;
     Ok("SIG_ALL 2-of-2 refund multisig enforced correctly".to_string())
 }
@@ -2211,7 +2298,7 @@ async fn scenario_p2pk_sigall_output_amounts_swapped_fail(mint_url: String) -> R
         locked.proofs,
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
 
     let outputs = request.outputs_mut();
     (outputs[0].amount, outputs[1].amount) = (outputs[1].amount, outputs[0].amount);
@@ -2280,7 +2367,7 @@ async fn scenario_htlc_sigall_signature_only_fails(mint_url: String) -> Result<S
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
     request.inputs_mut()[0].add_preimage(String::new());
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
     let error = expect_swap_failure(
         ctx.client.post_swap(request).await,
         "SIG_ALL HTLC signature-only",
@@ -2311,7 +2398,7 @@ async fn scenario_htlc_sigall_requires_preimage_and_transaction_signature(
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
     request.inputs_mut()[0].add_preimage(fixture.preimage);
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
     let response = expect_swap_success(
         ctx.client.post_swap(request).await,
         "SIG_ALL HTLC valid spend",
@@ -2343,7 +2430,7 @@ async fn scenario_htlc_sigall_wrong_preimage_fails(mint_url: String) -> Result<S
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
     request.inputs_mut()[0].add_preimage("this_is_the_wrong_preimage".to_string());
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
     let error = expect_swap_failure(
         ctx.client.post_swap(request).await,
         "SIG_ALL HTLC wrong preimage",
@@ -2375,7 +2462,7 @@ async fn scenario_htlc_sigall_locktime_after_expiry_refund_succeeds(
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
     request.inputs_mut()[0].add_preimage(String::new());
-    request.sign_sig_all(bob.secret)?;
+    sign_sig_all_request(&mut request, bob.secret)?;
     expect_swap_success(
         ctx.client.post_swap(request).await,
         "SIG_ALL HTLC refund after locktime",
@@ -2405,13 +2492,13 @@ async fn scenario_htlc_sigall_multisig_2of3(mint_url: String) -> Result<String> 
 
     let mut one = SwapRequest::new(locked.proofs.clone(), outputs.clone());
     one.inputs_mut()[0].add_preimage(fixture.preimage.clone());
-    one.sign_sig_all(alice.secret.clone())?;
+    sign_sig_all_request(&mut one, alice.secret.clone())?;
     expect_swap_failure(ctx.client.post_swap(one).await, "SIG_ALL HTLC 1-of-3")?;
 
     let mut two = SwapRequest::new(locked.proofs, outputs);
     two.inputs_mut()[0].add_preimage(fixture.preimage);
-    two.sign_sig_all(alice.secret)?;
-    two.sign_sig_all(bob.secret)?;
+    sign_sig_all_request(&mut two, alice.secret)?;
+    sign_sig_all_request(&mut two, bob.secret)?;
     expect_swap_success(ctx.client.post_swap(two).await, "SIG_ALL HTLC 2-of-3")?;
     Ok("SIG_ALL HTLC 2-of-3 multisig enforced correctly".to_string())
 }
@@ -2438,7 +2525,7 @@ async fn scenario_htlc_sigall_receiver_path_after_locktime(mint_url: String) -> 
         random_outputs(locked.keyset_id, standard_input_amount())?,
     );
     request.inputs_mut()[0].add_preimage(fixture.preimage);
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
     expect_swap_success(
         ctx.client.post_swap(request).await,
         "SIG_ALL HTLC receiver after locktime",
@@ -2651,7 +2738,7 @@ async fn scenario_melt_p2pk_sigall_transaction_signature_succeeds(
     let (ctx, quote, proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
 
     let mut request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
     request.verify_spending_conditions()?;
 
     let response =
@@ -2746,7 +2833,7 @@ async fn scenario_melt_htlc_sigall_preimage_and_transaction_signature_succeeds(
 
     let mut request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
     request.inputs_mut()[0].add_preimage(fixture.preimage.clone());
-    request.sign_sig_all(alice.secret)?;
+    sign_sig_all_request(&mut request, alice.secret)?;
     request.verify_spending_conditions()?;
 
     let response =
