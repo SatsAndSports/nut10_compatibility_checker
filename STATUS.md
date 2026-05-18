@@ -225,6 +225,16 @@ Current verification state:
   - Nutshell `standard`: 15 failures
   - Nutshell `legacy`: 8 failures
   - Nutmix `standard`: 5 failures
+- external melt now runs against both Nutshell and Nutmix via the single public `melt` suite
+- Nutshell full melt results:
+  - standard witness/preimage melt cases pass
+  - expired-locktime-no-refund melt passes
+  - positive SIG_ALL melt cases fail in both `standard` and `legacy`
+  - HTLC SIG_ALL preimage-only negative currently returns HTTP 500 instead of a clean protocol rejection
+- Nutmix full melt results:
+  - standard witness/preimage melt cases pass
+  - positive SIG_ALL melt cases pass in `standard`
+  - the expired-locktime-no-refund melt case fails
 
 ## Nutshell Analysis
 
@@ -299,6 +309,15 @@ Nutmix appears not to accept the HTLC refund path after locktime expiry in the w
 Cause:
 These unexpectedly succeed, which suggests a possible HTLC SIG_ALL preimage-enforcement issue rather than just an error-shape mismatch.
 
+External melt observations:
+
+- both Nutshell and Nutmix accept fake-invoice melt at a basic level
+- both reject a simple unsigned P2PK melt, showing they reach and enforce at least basic spending-condition rejection in melt
+- Nutshell handles the broader standard witness/preimage melt set and the expired-locktime-no-refund melt path
+- Nutmix handles the broader standard witness/preimage melt set and the positive SIG_ALL melt batch, but still rejects the expired-locktime-no-refund path
+- unlike swap, the legacy mode does not rescue Nutshell melt SIG_ALL positives
+- Nutshell's HTLC SIG_ALL preimage-only negative currently produces an internal server error, which is a separate quality issue from simple compatibility failure
+
 Harness caveat for external targets:
 
 - for external mints, negative-case validation now accepts protocol-like rejections even when exact failure text differs from CDK
@@ -314,6 +333,9 @@ Harness caveat for external targets:
 - decide whether to keep the remaining Nutshell SIG_ALL failures as explicit compatibility failures or add additional diagnostic target-specific modes
 - investigate whether a Nutshell-specific HTLC SIG_ALL witness-broadcast experiment is useful for diagnosis only
 - investigate the remaining reduced Nutmix standard-mode failure set in detail
+- investigate why Nutshell external melt SIG_ALL positives fail in both `standard` and `legacy`
+- investigate the Nutshell HTLC SIG_ALL HTTP 500 response for the preimage-only negative case
+- investigate the remaining Nutmix full-melt expired-locktime-no-refund failure as the clearest cross-suite consistency issue
 - if useful, gather mint-side logs from Nutshell and Nutmix for one representative scenario in each remaining failure cluster
 - replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 

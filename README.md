@@ -203,10 +203,20 @@ cd compat-runner
 cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap --sigall-mode legacy
 ```
 
+```bash
+# external Nutshell, full melt suite
+cd compat-runner
+cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite melt
+```
+
+```bash
+# external Nutmix, full melt suite
+cd compat-runner
+cargo run -- --mint-url http://127.0.0.1:3338 --target-name nutmix --suite melt
+```
+
 Current external target notes:
 
-- start with `swap`
-- keep `melt` fakewallet-scoped until invoice/payment setup is abstracted by target
 - for external targets, negative-case validation is now relaxed to accept protocol-like rejections even when exact error text differs from CDK
 - exact error text is still shown in the report for human diagnosis
 
@@ -250,6 +260,18 @@ Current Nutmix status:
 - normalized swap count is currently:
   - `standard`: 5 failures
 - in other words: many earlier Nutmix failures were negative cases rejected correctly but reported with generic error shapes
+
+Current external melt status:
+
+- Nutshell:
+  - standard witness/preimage melt cases pass
+  - post-locktime expired-locktime-no-refund melt passes
+  - positive SIG_ALL melt cases still fail in both `standard` and `legacy`
+  - HTLC SIG_ALL preimage-only negative currently returns HTTP 500 instead of a clean protocol rejection
+- Nutmix:
+  - standard witness/preimage melt cases pass
+  - positive SIG_ALL melt cases pass in `standard`
+  - the expired-locktime-no-refund melt case fails
 
 Remaining Nutmix standard-mode failure clusters:
 

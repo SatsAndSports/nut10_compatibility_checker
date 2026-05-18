@@ -8,21 +8,21 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow};
 use bip39::Mnemonic;
-use clap::{Parser, ValueEnum};
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::{blind_message, construct_proofs};
 use cdk::mint_url::MintUrl;
 use cdk::nuts::nut10::Secret as Nut10Secret;
 use cdk::nuts::{
     BlindedMessage, Conditions, CurrencyUnit, Id, Keys, MeltQuoteBolt11Request, MeltQuoteState,
-    MeltRequest, MintQuoteState, MintRequest, PaymentMethod, PreMintSecrets, Proof,
+    MeltRequest, MintQuoteState, MintRequest, P2PKWitness, PaymentMethod, PreMintSecrets, Proof,
     ProofsMethods, PublicKey, SecretKey, SigFlag, SpendingConditionVerification,
-    SpendingConditions, SwapRequest, Witness, P2PKWitness,
+    SpendingConditions, SwapRequest, Witness,
 };
 use cdk::wallet::{HttpClient, MintConnector, Wallet, WalletBuilder};
 use cdk::{Amount, Error, MeltQuoteCreateResponse, MeltQuoteRequest, MeltQuoteResponse, StreamExt};
 use cdk_fake_wallet::create_fake_invoice;
 use cdk_mintd::config::{Database, DatabaseEngine, FakeWallet, Info, Ln, LnBackend, Settings};
+use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
 
@@ -37,17 +37,17 @@ const EXPECT_SIGNATURE_INVALID: &[&str] = &[
     "Witness is missing for p2pk signature",
     "no witness in proof",
 ];
-const EXPECT_WITNESS_NO_SIGNATURES: &[&str] =
-    &["Witness did not provide signatures", "no signatures in proof"];
+const EXPECT_WITNESS_NO_SIGNATURES: &[&str] = &[
+    "Witness did not provide signatures",
+    "no signatures in proof",
+];
 const EXPECT_SIGALL_WITNESS_NO_SIGNATURES: &[&str] = &[
     "Witness signatures not provided",
     "Witness did not provide signatures",
     "Witness is missing for htlc preimage",
 ];
-const EXPECT_NOT_HTLC_SECRET: &[&str] = &[
-    "Secret is not a HTLC secret",
-    "no HTLC preimage provided",
-];
+const EXPECT_NOT_HTLC_SECRET: &[&str] =
+    &["Secret is not a HTLC secret", "no HTLC preimage provided"];
 const EXPECT_PREIMAGE_INVALID_HEX: &[&str] = &[
     "Preimage must be valid hex encoding",
     "HTLC preimage must be 64 characters hex.",
@@ -85,7 +85,6 @@ type ScenarioFuture = Pin<Box<dyn Future<Output = Result<String>> + Send>>;
 enum ScenarioStatus {
     Pass,
     Fail,
-    Skip,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -153,7 +152,6 @@ struct ParsedProtocolError {
 struct TargetProfile {
     name: String,
     mint_url: String,
-    supports_fakewallet_melt: bool,
     manual_http_funding: bool,
     relaxed_external_negative_errors: bool,
 }
@@ -208,7 +206,6 @@ async fn main() -> Result<()> {
                 .clone()
                 .unwrap_or_else(|| "external".to_string()),
             mint_url: mint_url.clone(),
-            supports_fakewallet_melt: false,
             manual_http_funding: true,
             relaxed_external_negative_errors: true,
         },
@@ -218,7 +215,6 @@ async fn main() -> Result<()> {
                 .clone()
                 .unwrap_or_else(|| "cdk".to_string()),
             mint_url: mint.mint_url.clone(),
-            supports_fakewallet_melt: true,
             manual_http_funding: false,
             relaxed_external_negative_errors: false,
         },
@@ -510,16 +506,6 @@ async fn run_named_scenario(
 ) -> ScenarioResult {
     let started = Instant::now();
 
-    if scenario_requires_fakewallet_melt(name) && !target.supports_fakewallet_melt {
-        return ScenarioResult {
-            name: name.to_string(),
-            target: target.name.clone(),
-            status: ScenarioStatus::Skip,
-            duration_ms: started.elapsed().as_millis(),
-            note: "scenario currently requires fakewallet-backed melt support".to_string(),
-        };
-    }
-
     match scenario(target.mint_url.clone()).await {
         Ok(note) => ScenarioResult {
             name: name.to_string(),
@@ -536,10 +522,6 @@ async fn run_named_scenario(
             note: err.to_string(),
         },
     }
-}
-
-fn scenario_requires_fakewallet_melt(name: &str) -> bool {
-    name.starts_with("melt_")
 }
 
 fn scenario_in_suite(name: &str, suite: Suite) -> bool {
@@ -843,7 +825,10 @@ impl TestContext {
                 .ok_or_else(|| anyhow!("mint quote missing signing key"))?,
         )?;
 
-        let response = self.client.post_mint(&PaymentMethod::BOLT11, request).await?;
+        let response = self
+            .client
+            .post_mint(&PaymentMethod::BOLT11, request)
+            .await?;
 
         Ok(construct_proofs(
             response.signatures,
@@ -913,10 +898,16 @@ async fn prepare_locked_melt_proofs(
     conditions: &SpendingConditions,
 ) -> Result<(TestContext, MeltQuoteInfo, Vec<Proof>)> {
     let ctx = TestContext::new(mint_url).await?;
-    let quote = create_melt_quote(&ctx.client).await?;
+    let quote = create_melt_quote(&ctx.client)
+        .await
+        .context("[quote] failed to create melt quote")?;
     let input_amount = successful_melt_input_amount(&quote);
-    ctx.fund_wallet(input_amount).await?;
-    let locked = lock_proofs_with_conditions(&ctx, input_amount, conditions).await?;
+    ctx.fund_wallet(input_amount)
+        .await
+        .context("[fund] failed to fund melt inputs")?;
+    let locked = lock_proofs_with_conditions(&ctx, input_amount, conditions)
+        .await
+        .context("[fund] failed to prepare locked melt proofs")?;
     Ok((ctx, quote, locked.proofs))
 }
 
@@ -958,13 +949,15 @@ async fn post_melt_and_wait_for_success(
     request: MeltRequest<String>,
     msg: &str,
 ) -> Result<MeltQuoteResponse<String>> {
-    let initial =
-        expect_melt_success(client.post_melt(&PaymentMethod::BOLT11, request).await, msg)?;
+    let initial = expect_melt_success(client.post_melt(&PaymentMethod::BOLT11, request).await, msg)
+        .with_context(|| format!("[submit] {msg}"))?;
 
     match initial.state() {
         MeltQuoteState::Paid => Ok(initial),
         MeltQuoteState::Pending => {
-            wait_for_melt_completion(client, initial.quote(), Duration::from_secs(5)).await
+            wait_for_melt_completion(client, initial.quote(), Duration::from_secs(5))
+                .await
+                .with_context(|| format!("[settle] {msg}"))
         }
         MeltQuoteState::Failed | MeltQuoteState::Unknown | MeltQuoteState::Unpaid => {
             Err(anyhow!("{msg}: unexpected melt state {}", initial.state()))
@@ -3137,7 +3130,6 @@ fn print_results_table(results: &[ScenarioResult]) {
             match result.status {
                 ScenarioStatus::Pass => "PASS".to_string(),
                 ScenarioStatus::Fail => "FAIL".to_string(),
-                ScenarioStatus::Skip => "SKIP".to_string(),
             },
             format!("{} ms", result.duration_ms),
             result.note.clone(),
