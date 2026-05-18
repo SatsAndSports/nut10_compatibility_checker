@@ -73,6 +73,10 @@ const EXPECT_SIGALL_INPUT_MISMATCH: &[&str] = &[
     "not all secrets are equal.",
     "Witness is missing for htlc preimage",
 ];
+const SCENARIO_COLUMN_WIDTH: usize =
+    "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend".len();
+const STATUS_COLUMN_WIDTH: usize = 6;
+const DURATION_COLUMN_WIDTH: usize = 8;
 
 fn standard_input_amount() -> Amount {
     Amount::from(10)
@@ -435,14 +439,15 @@ async fn main() -> Result<()> {
         ];
 
         let mut results = Vec::with_capacity(scenarios.len());
+        print_results_header();
 
         for (name, scenario) in scenarios {
             if scenario_in_suite(name, args.suite) {
-                results.push(run_named_scenario(name, &target, scenario).await);
+                let result = run_named_scenario(name, &target, scenario).await;
+                print_result_row(&result);
+                results.push(result);
             }
         }
-
-        print_results_table(&results);
 
         let report = Report {
             generated_at_unix_secs: SystemTime::now()
@@ -478,6 +483,18 @@ async fn main() -> Result<()> {
         .iter()
         .filter(|result| matches!(result.status, ScenarioStatus::Fail))
         .count();
+    let pass_count = report
+        .results
+        .iter()
+        .filter(|result| matches!(result.status, ScenarioStatus::Pass))
+        .count();
+    println!();
+    println!(
+        "Completed {} scenarios: {} pass, {} fail",
+        report.results.len(),
+        pass_count,
+        failure_count
+    );
     if failure_count > 0 {
         return Err(anyhow!("{failure_count} scenario(s) failed"));
     }
@@ -3120,39 +3137,15 @@ async fn write_json_report(path: &Path, report: &Report) -> Result<()> {
     Ok(())
 }
 
-fn print_results_table(results: &[ScenarioResult]) {
-    let headers = ["Scenario", "Status", "Duration", "Note"];
-    let mut rows = Vec::with_capacity(results.len());
-
-    for result in results {
-        rows.push(vec![
-            result.name.clone(),
-            match result.status {
-                ScenarioStatus::Pass => "PASS".to_string(),
-                ScenarioStatus::Fail => "FAIL".to_string(),
-            },
-            format!("{} ms", result.duration_ms),
-            result.note.clone(),
-        ]);
-    }
-
-    let mut widths = headers.map(str::len);
-    for row in &rows {
-        for (index, value) in row.iter().enumerate() {
-            widths[index] = widths[index].max(value.len());
-        }
-    }
-
+fn print_results_header() {
     println!(
-        "{:<w0$}  {:<w1$}  {:<w2$}  {:<w3$}",
-        headers[0],
-        headers[1],
-        headers[2],
-        headers[3],
-        w0 = widths[0],
-        w1 = widths[1],
-        w2 = widths[2],
-        w3 = widths[3],
+        "{:<w0$}  {:<w1$}  {:<w2$}  Note",
+        "Scenario",
+        "Status",
+        "Duration",
+        w0 = SCENARIO_COLUMN_WIDTH,
+        w1 = STATUS_COLUMN_WIDTH,
+        w2 = DURATION_COLUMN_WIDTH,
     );
     println!(
         "{:-<w0$}  {:-<w1$}  {:-<w2$}  {:-<w3$}",
@@ -3160,25 +3153,30 @@ fn print_results_table(results: &[ScenarioResult]) {
         "",
         "",
         "",
-        w0 = widths[0],
-        w1 = widths[1],
-        w2 = widths[2],
-        w3 = widths[3],
+        w0 = SCENARIO_COLUMN_WIDTH,
+        w1 = STATUS_COLUMN_WIDTH,
+        w2 = DURATION_COLUMN_WIDTH,
+        w3 = 4,
     );
+}
 
-    for row in rows {
-        println!(
-            "{:<w0$}  {:<w1$}  {:<w2$}  {:<w3$}",
-            row[0],
-            row[1],
-            row[2],
-            row[3],
-            w0 = widths[0],
-            w1 = widths[1],
-            w2 = widths[2],
-            w3 = widths[3],
-        );
-    }
+fn print_result_row(result: &ScenarioResult) {
+    let status = match result.status {
+        ScenarioStatus::Pass => "PASS",
+        ScenarioStatus::Fail => "FAIL",
+    };
+    let duration = format!("{} ms", result.duration_ms);
+
+    println!(
+        "{:<w0$}  {:<w1$}  {:<w2$}  {}",
+        result.name,
+        status,
+        duration,
+        result.note,
+        w0 = SCENARIO_COLUMN_WIDTH,
+        w1 = STATUS_COLUMN_WIDTH,
+        w2 = DURATION_COLUMN_WIDTH,
+    );
 }
 
 impl fmt::Debug for LocalMintHandle {
