@@ -1,6 +1,7 @@
 {
-  "generated_at_unix_secs": 1779127999,
-  "generated_at_utc": "2026-05-18T18:13:19Z",
+  "generated_at_unix_secs": 1779129287,
+  "generated_at_utc": "2026-05-18T18:34:47Z",
+  "sigall_mode": "standard",
   "target": "external",
   "mint_url": "http://127.0.0.1:3339",
   "mint": {

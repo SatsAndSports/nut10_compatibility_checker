@@ -1,7 +1,7 @@
 {
-  "generated_at_unix_secs": 1779129274,
-  "generated_at_utc": "2026-05-18T18:34:34Z",
-  "sigall_mode": "standard",
+  "generated_at_unix_secs": 1779129311,
+  "generated_at_utc": "2026-05-18T18:35:11Z",
+  "sigall_mode": "legacy",
   "target": "external",
   "mint_url": "http://127.0.0.1:3338",
   "mint": {
@@ -126,8 +126,8 @@
     {
       "name": "p2pk_sigall_multisig_2of3",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL 2-of-3 multisig enforced correctly"
+      "status": "fail",
+      "note": "SIG_ALL valid 2-of-3: Token not verified"
     },
     {
       "name": "p2pk_sigall_wrong_signer_fails",
@@ -144,14 +144,14 @@
     {
       "name": "p2pk_sigall_locktime_before_expiry_primary_only",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL primary path works before locktime; refund path rejected"
+      "status": "fail",
+      "note": "SIG_ALL primary before locktime: Token not verified"
     },
     {
       "name": "p2pk_sigall_locktime_after_expiry_primary_still_works",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL primary path still works after locktime"
+      "status": "fail",
+      "note": "SIG_ALL primary after locktime: Token not verified"
     },
     {
       "name": "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend",
@@ -162,50 +162,50 @@
     {
       "name": "p2pk_sigall_multisig_locktime_primary_still_works",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL primary multisig still works after locktime"
+      "status": "fail",
+      "note": "SIG_ALL primary multisig after locktime: Token not verified"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_data_fail",
       "target": "external",
-      "status": "pass",
-      "note": "mixed SIG_ALL proofs rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
+      "status": "fail",
+      "note": "alice-only SIG_ALL: Token not verified"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_kind_fail",
       "target": "external",
-      "status": "pass",
-      "note": "mixed SIG_ALL proof kinds rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
+      "status": "fail",
+      "note": "p2pk-only mixed-kind control: Token not verified"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_tags_fail",
       "target": "external",
-      "status": "pass",
-      "note": "mixed SIG_ALL proof tags rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
+      "status": "fail",
+      "note": "plain-only mixed-tags control: Token not verified"
     },
     {
       "name": "p2pk_sigall_multisig_before_locktime",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL 2-of-3 primary multisig works before locktime"
+      "status": "fail",
+      "note": "SIG_ALL 2-of-3 before locktime: Token not verified"
     },
     {
       "name": "p2pk_sigall_more_signatures_than_required",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL accepted more valid signatures than required"
+      "status": "fail",
+      "note": "extra valid signatures: Token not verified"
     },
     {
       "name": "p2pk_sigall_refund_multisig_2of2",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL 2-of-2 refund multisig enforced correctly"
+      "status": "fail",
+      "note": "2-of-2 refund multisig: Token not verified"
     },
     {
       "name": "p2pk_sigall_output_amounts_swapped_fail",
       "target": "external",
-      "status": "pass",
-      "note": "tampered SIG_ALL outputs rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
+      "status": "fail",
+      "note": "restored original output amounts: Token not verified"
     },
     {
       "name": "htlc_sigall_preimage_only_fails",
@@ -216,38 +216,38 @@
     {
       "name": "htlc_sigall_signature_only_fails",
       "target": "external",
-      "status": "fail",
-      "note": "SIG_ALL HTLC signature-only: swap unexpectedly succeeded"
+      "status": "pass",
+      "note": "SIG_ALL HTLC signature-only rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "htlc_sigall_requires_preimage_and_transaction_signature",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL HTLC swap succeeded with 2 output signature(s)"
+      "status": "fail",
+      "note": "SIG_ALL HTLC valid spend: Token not verified"
     },
     {
       "name": "htlc_sigall_wrong_preimage_fails",
       "target": "external",
-      "status": "fail",
-      "note": "SIG_ALL HTLC wrong preimage: swap unexpectedly succeeded"
+      "status": "pass",
+      "note": "wrong SIG_ALL HTLC preimage rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "htlc_sigall_locktime_after_expiry_refund_succeeds",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL HTLC refund path worked after locktime"
+      "status": "fail",
+      "note": "SIG_ALL HTLC refund after locktime: Token not verified"
     },
     {
       "name": "htlc_sigall_multisig_2of3",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL HTLC 2-of-3 multisig enforced correctly"
+      "status": "fail",
+      "note": "SIG_ALL HTLC 2-of-3: Token not verified"
     },
     {
       "name": "htlc_sigall_receiver_path_after_locktime",
       "target": "external",
-      "status": "pass",
-      "note": "SIG_ALL HTLC receiver path remains valid after locktime"
+      "status": "fail",
+      "note": "SIG_ALL HTLC receiver after locktime: Token not verified"
     },
     {
       "name": "melt_p2pk_unsigned_fails",
@@ -294,8 +294,8 @@
     {
       "name": "melt_p2pk_sigall_transaction_signature_succeeds",
       "target": "external",
-      "status": "pass",
-      "note": "melt succeeded with state PAID"
+      "status": "fail",
+      "note": "P2PK spend conditions are not met"
     },
     {
       "name": "melt_htlc_sigall_preimage_only_fails",
@@ -312,8 +312,8 @@
     {
       "name": "melt_htlc_sigall_preimage_and_transaction_signature_succeeds",
       "target": "external",
-      "status": "pass",
-      "note": "melt succeeded with state PAID"
+      "status": "fail",
+      "note": "HTLC spend conditions are not met"
     },
     {
       "name": "melt_p2pk_post_locktime_anyone_can_spend",

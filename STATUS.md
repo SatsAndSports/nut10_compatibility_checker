@@ -158,6 +158,7 @@ Current behavior:
 - supports external mint URL mode with suite filtering
 - supports `SIG_ALL` signing modes: `standard` and `legacy`
 - prints the written JSON report path to stdout when `--report-name` is used
+- prints `SIG_ALL Mode: legacy` in stdout metadata when legacy mode is selected
 
 The first implemented scenarios are:
 

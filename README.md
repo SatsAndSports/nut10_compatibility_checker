@@ -176,6 +176,7 @@ CLI behavior:
   suite selection
 - `--sigall-mode standard|legacy`
   choose CDK/spec `SIG_ALL` signing or legacy Nutshell-style signing
+  legacy mode is also recorded in the JSON report and shown in stdout metadata
 
 Examples:
 

@@ -108,6 +108,7 @@ struct MintMetadata {
 struct Report {
     generated_at_unix_secs: u64,
     generated_at_utc: String,
+    sigall_mode: SigAllMode,
     target: String,
     mint_url: String,
     mint: MintMetadata,
@@ -170,6 +171,7 @@ struct TargetProfile {
 struct RunMetadata {
     generated_at_unix_secs: u64,
     generated_at_utc: String,
+    sigall_mode: SigAllMode,
     mint: MintMetadata,
 }
 
@@ -183,7 +185,8 @@ enum Suite {
     All,
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy, Serialize, ValueEnum)]
+#[serde(rename_all = "lowercase")]
 enum SigAllMode {
     Standard,
     Legacy,
@@ -461,6 +464,7 @@ async fn main() -> Result<()> {
         let report = Report {
             generated_at_unix_secs: run_metadata.generated_at_unix_secs,
             generated_at_utc: run_metadata.generated_at_utc.clone(),
+            sigall_mode: run_metadata.sigall_mode,
             target: target.name.clone(),
             mint_url: target.mint_url.clone(),
             mint: run_metadata.mint.clone(),
@@ -732,6 +736,7 @@ async fn fetch_run_metadata(target: &TargetProfile) -> Result<RunMetadata> {
     Ok(RunMetadata {
         generated_at_unix_secs,
         generated_at_utc,
+        sigall_mode: current_sigall_mode(),
         mint,
     })
 }
@@ -745,6 +750,9 @@ fn print_run_metadata(target: &TargetProfile, metadata: &RunMetadata) {
     println!("Mint URL:   {}", target.mint_url);
     if let Some(name) = metadata.mint.name.as_deref() {
         println!("Mint Name:  {}", name);
+    }
+    if matches!(metadata.sigall_mode, SigAllMode::Legacy) {
+        println!("SIG_ALL Mode: legacy");
     }
     println!("Started At: {}", metadata.generated_at_utc);
     println!();
