@@ -160,7 +160,7 @@ Current behavior:
 - supports `SIG_ALL` signing modes: `standard` and `legacy`
 - prints the written JSON report path to stdout when `--report-name` is used
 - prints `SIG_ALL Mode: legacy` in stdout metadata when legacy mode is selected
-- generates `README.md` from `_README.md` plus `reports/cdk.json`, `reports/nutshell.json`, and `reports/nutmix.json`
+- generates `README.md` from `_README.md` plus `reports/cdk.json`, `reports/nutshell.json`, `reports/nutshell-legacySIGALL.json`, and `reports/nutmix.json`
 
 The first implemented scenarios are:
 

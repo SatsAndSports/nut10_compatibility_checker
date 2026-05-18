@@ -11,9 +11,10 @@ TEMPLATE_PATH = ROOT / "_README.md"
 OUTPUT_PATH = ROOT / "README.md"
 PLACEHOLDER = "{{RESULTS_TABLES}}"
 REPORT_SPECS = [
-    ("CDK", "cdk"),
-    ("Nutshell", "nutshell"),
-    ("Nutmix", "nutmix"),
+    ("CDK", "cdk", "cdk"),
+    ("Nutshell", "nutshell", "nutshell"),
+    ("Nutshell (Legacy SIG_ALL)", "nutshell-legacySIGALL", "nutshell-legacy-sigall"),
+    ("Nutmix", "nutmix", "nutmix"),
 ]
 
 
@@ -88,7 +89,7 @@ def render_results_table(report: dict) -> str:
     return "\n".join(rows)
 
 
-def render_section(title: str, slug: str) -> str:
+def render_section(title: str, slug: str, anchor: str) -> str:
     report = load_report(slug)
     results = report.get("results") or []
     failed = sum(1 for result in results if result.get("status") == "fail")
@@ -99,6 +100,8 @@ def render_section(title: str, slug: str) -> str:
     results_table = render_results_table(report)
     return "\n".join(
         [
+            f'<a id="{anchor}"></a>',
+            "",
             f"### {title}",
             "",
             summary,
@@ -122,13 +125,12 @@ def render_results_sections() -> str:
         "Jump to:",
         "",
     ]
-    for title, _slug in REPORT_SPECS:
-        anchor = title.lower()
+    for title, _slug, anchor in REPORT_SPECS:
         lines.append(f"- [{title}](#{anchor})")
     lines.append("")
 
-    for index, (title, slug) in enumerate(REPORT_SPECS):
-        lines.append(render_section(title, slug))
+    for index, (title, slug, anchor) in enumerate(REPORT_SPECS):
+        lines.append(render_section(title, slug, anchor))
         if index != len(REPORT_SPECS) - 1:
             lines.append("")
 

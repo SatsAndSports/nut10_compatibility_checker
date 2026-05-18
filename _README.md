@@ -228,6 +228,7 @@ Regenerate the tracked report artifacts:
 cd compat-runner
 cargo run -- --report-name cdk
 cargo run -- --mint-url http://127.0.0.1:3339 --report-name nutshell --suite all --sigall-mode standard
+cargo run -- --mint-url http://127.0.0.1:3339 --report-name nutshell-legacySIGALL --suite all --sigall-mode legacy
 cargo run -- --mint-url http://127.0.0.1:3338 --report-name nutmix --suite all --sigall-mode standard
 ```
 
