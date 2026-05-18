@@ -1,8 +1,8 @@
 {
-  "generated_at_unix_secs": 1779127646,
-  "generated_at_utc": "2026-05-18T18:07:26Z",
+  "generated_at_unix_secs": 1779127970,
+  "generated_at_utc": "2026-05-18T18:12:50Z",
   "target": "cdk",
-  "mint_url": "http://127.0.0.1:46403",
+  "mint_url": "http://127.0.0.1:38955",
   "mint": {
     "name": null,
     "version": "cdk-mintd/0.16.0"
@@ -12,378 +12,324 @@
       "name": "p2pk_swap_unsigned_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 278,
       "note": "swap rejected as expected: Signature missing or invalid"
     },
     {
       "name": "p2pk_partial_signatures_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 274,
       "note": "partial spend rejected: Signature missing or invalid"
     },
     {
       "name": "p2pk_swap_signed_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 315,
       "note": "swap succeeded with 2 output signature(s)"
     },
     {
       "name": "p2pk_multisig_2of3",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 290,
       "note": "2-of-3 multisig accepted only valid signer set"
     },
     {
       "name": "p2pk_locktime_before_expiry_primary_only",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 293,
       "note": "primary path works before locktime; refund path rejected"
     },
     {
       "name": "p2pk_locktime_after_expiry_primary_still_works",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 302,
       "note": "primary path still works after locktime"
     },
     {
       "name": "p2pk_locktime_after_expiry_no_refund_anyone_can_spend",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 272,
       "note": "anyone-can-spend refund path worked after locktime"
     },
     {
       "name": "p2pk_multisig_locktime_primary_still_works",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 240,
       "note": "primary multisig still works after locktime"
     },
     {
       "name": "p2pk_wrong_signer_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 261,
       "note": "wrong signer rejected: Signature missing or invalid"
     },
     {
       "name": "p2pk_duplicate_signatures_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 252,
       "note": "duplicate signatures rejected: Signature missing or invalid"
     },
     {
       "name": "htlc_preimage_only_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 304,
       "note": "preimage-only HTLC spend rejected: Unknown error response: `code: 50000, detail: Witness did not provide signatures`"
     },
     {
       "name": "htlc_signature_only_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 293,
       "note": "signature-only HTLC spend rejected: Unknown error response: `code: 50000, detail: Secret is not a HTLC secret`"
     },
     {
       "name": "htlc_swap_preimage_and_signature_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 315,
       "note": "HTLC swap succeeded with 2 output signature(s)"
     },
     {
       "name": "htlc_wrong_preimage_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 228,
       "note": "wrong HTLC preimage rejected: Unknown error response: `code: 50000, detail: Preimage must be valid hex encoding`"
     },
     {
       "name": "htlc_locktime_after_expiry_refund_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 285,
       "note": "HTLC refund path worked after locktime"
     },
     {
       "name": "htlc_multisig_2of3",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 328,
       "note": "HTLC 2-of-3 multisig enforced correctly"
     },
     {
       "name": "htlc_receiver_path_after_locktime",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 326,
       "note": "HTLC receiver path remains valid after locktime"
     },
     {
       "name": "p2pk_sigall_requires_transaction_signature",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 280,
       "note": "SIG_ALL rejected unsigned spend: Signature missing or invalid"
     },
     {
       "name": "p2pk_sigall_sig_inputs_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 305,
       "note": "SIG_INPUTS signatures rejected for SIG_ALL: Signature missing or invalid"
     },
     {
       "name": "p2pk_sigall_multisig_2of3",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 303,
       "note": "SIG_ALL 2-of-3 multisig enforced correctly"
     },
     {
       "name": "p2pk_sigall_wrong_signer_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 222,
       "note": "wrong SIG_ALL signer rejected: Signature missing or invalid"
     },
     {
       "name": "p2pk_sigall_duplicate_signatures_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 243,
       "note": "duplicate SIG_ALL signatures rejected: Signature missing or invalid"
     },
     {
       "name": "p2pk_sigall_locktime_before_expiry_primary_only",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 269,
       "note": "SIG_ALL primary path works before locktime; refund path rejected"
     },
     {
       "name": "p2pk_sigall_locktime_after_expiry_primary_still_works",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 284,
       "note": "SIG_ALL primary path still works after locktime"
     },
     {
       "name": "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 278,
       "note": "SIG_ALL anyone-can-spend refund path worked after locktime"
     },
     {
       "name": "p2pk_sigall_multisig_locktime_primary_still_works",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 246,
       "note": "SIG_ALL primary multisig still works after locktime"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_data_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 666,
       "note": "mixed SIG_ALL proofs rejected: Unknown error response: `code: 50000, detail: Spend conditions are not met`"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_kind_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 526,
       "note": "mixed SIG_ALL proof kinds rejected: Unknown error response: `code: 50000, detail: Spend conditions are not met`"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_tags_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 548,
       "note": "mixed SIG_ALL proof tags rejected: Unknown error response: `code: 50000, detail: Spend conditions are not met`"
     },
     {
       "name": "p2pk_sigall_multisig_before_locktime",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 283,
       "note": "SIG_ALL 2-of-3 primary multisig works before locktime"
     },
     {
       "name": "p2pk_sigall_more_signatures_than_required",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 272,
       "note": "SIG_ALL accepted more valid signatures than required"
     },
     {
       "name": "p2pk_sigall_refund_multisig_2of2",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 275,
       "note": "SIG_ALL 2-of-2 refund multisig enforced correctly"
     },
     {
       "name": "p2pk_sigall_output_amounts_swapped_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 267,
       "note": "tampered SIG_ALL outputs rejected: Signature missing or invalid"
     },
     {
       "name": "htlc_sigall_preimage_only_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 256,
       "note": "SIG_ALL HTLC preimage-only rejected: Unknown error response: `code: 50000, detail: Witness signatures not provided`"
     },
     {
       "name": "htlc_sigall_signature_only_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 279,
       "note": "SIG_ALL HTLC signature-only rejected: Unknown error response: `code: 50000, detail: HTLC spend conditions are not met`"
     },
     {
       "name": "htlc_sigall_requires_preimage_and_transaction_signature",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 281,
       "note": "SIG_ALL HTLC swap succeeded with 2 output signature(s)"
     },
     {
       "name": "htlc_sigall_wrong_preimage_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 221,
       "note": "wrong SIG_ALL HTLC preimage rejected: Unknown error response: `code: 50000, detail: HTLC spend conditions are not met`"
     },
     {
       "name": "htlc_sigall_locktime_after_expiry_refund_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 266,
       "note": "SIG_ALL HTLC refund path worked after locktime"
     },
     {
       "name": "htlc_sigall_multisig_2of3",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 300,
       "note": "SIG_ALL HTLC 2-of-3 multisig enforced correctly"
     },
     {
       "name": "htlc_sigall_receiver_path_after_locktime",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 270,
       "note": "SIG_ALL HTLC receiver path remains valid after locktime"
     },
     {
       "name": "melt_p2pk_unsigned_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 246,
       "note": "unsigned melt rejected as expected: Signature missing or invalid"
     },
     {
       "name": "melt_p2pk_signed_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 242,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_htlc_preimage_only_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 288,
       "note": "preimage-only melt rejected as expected: Unknown error response: `code: 50000, detail: Witness did not provide signatures`"
     },
     {
       "name": "melt_htlc_signature_only_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 300,
       "note": "signature-only melt rejected as expected: Unknown error response: `code: 50000, detail: Secret is not a HTLC secret`"
     },
     {
       "name": "melt_htlc_preimage_and_signature_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 289,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_p2pk_sigall_unsigned_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 252,
       "note": "unsigned SIG_ALL melt rejected as expected: Signature missing or invalid"
     },
     {
       "name": "melt_p2pk_sigall_sig_inputs_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 262,
       "note": "SIG_INPUTS melt rejected for SIG_ALL as expected: Signature missing or invalid"
     },
     {
       "name": "melt_p2pk_sigall_transaction_signature_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 276,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_htlc_sigall_preimage_only_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 257,
       "note": "preimage-only SIG_ALL melt rejected as expected: Unknown error response: `code: 50000, detail: Witness signatures not provided`"
     },
     {
       "name": "melt_htlc_sigall_sig_inputs_fail",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 294,
       "note": "SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: Unknown error response: `code: 50000, detail: HTLC spend conditions are not met`"
     },
     {
       "name": "melt_htlc_sigall_preimage_and_transaction_signature_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 276,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_p2pk_post_locktime_anyone_can_spend",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 266,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_p2pk_before_locktime_wrong_key_fails",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 252,
       "note": "wrong-key melt rejected before locktime as expected: Signature missing or invalid"
     },
     {
       "name": "melt_p2pk_before_locktime_correct_key_succeeds",
       "target": "cdk",
       "status": "pass",
-      "duration_ms": 269,
       "note": "melt succeeded with state PAID"
     }
   ]

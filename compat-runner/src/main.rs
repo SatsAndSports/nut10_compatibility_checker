@@ -76,7 +76,6 @@ const EXPECT_SIGALL_INPUT_MISMATCH: &[&str] = &[
 const SCENARIO_COLUMN_WIDTH: usize =
     "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend".len();
 const STATUS_COLUMN_WIDTH: usize = 6;
-const DURATION_COLUMN_WIDTH: usize = 8;
 
 fn standard_input_amount() -> Amount {
     Amount::from(10)
@@ -96,7 +95,6 @@ struct ScenarioResult {
     name: String,
     target: String,
     status: ScenarioStatus,
-    duration_ms: u128,
     note: String,
 }
 
@@ -535,21 +533,17 @@ async fn run_named_scenario(
     target: &TargetProfile,
     scenario: Box<dyn FnOnce(String) -> ScenarioFuture + Send>,
 ) -> ScenarioResult {
-    let started = Instant::now();
-
     match scenario(target.mint_url.clone()).await {
         Ok(note) => ScenarioResult {
             name: name.to_string(),
             target: target.name.clone(),
             status: ScenarioStatus::Pass,
-            duration_ms: started.elapsed().as_millis(),
             note,
         },
         Err(err) => ScenarioResult {
             name: name.to_string(),
             target: target.name.clone(),
             status: ScenarioStatus::Fail,
-            duration_ms: started.elapsed().as_millis(),
             note: err.to_string(),
         },
     }
@@ -3199,24 +3193,20 @@ async fn write_json_report(path: &Path, report: &Report) -> Result<()> {
 
 fn print_results_header() {
     println!(
-        "{:<w0$}  {:<w1$}  {:<w2$}  Note",
+        "{:<w0$}  {:<w1$}  Note",
         "Scenario",
         "Status",
-        "Duration",
         w0 = SCENARIO_COLUMN_WIDTH,
         w1 = STATUS_COLUMN_WIDTH,
-        w2 = DURATION_COLUMN_WIDTH,
     );
     println!(
-        "{:-<w0$}  {:-<w1$}  {:-<w2$}  {:-<w3$}",
-        "",
+        "{:-<w0$}  {:-<w1$}  {:-<w2$}",
         "",
         "",
         "",
         w0 = SCENARIO_COLUMN_WIDTH,
         w1 = STATUS_COLUMN_WIDTH,
-        w2 = DURATION_COLUMN_WIDTH,
-        w3 = 4,
+        w2 = 4,
     );
 }
 
@@ -3225,17 +3215,14 @@ fn print_result_row(result: &ScenarioResult) {
         ScenarioStatus::Pass => "PASS",
         ScenarioStatus::Fail => "FAIL",
     };
-    let duration = format!("{} ms", result.duration_ms);
 
     println!(
-        "{:<w0$}  {:<w1$}  {:<w2$}  {}",
+        "{:<w0$}  {:<w1$}  {}",
         result.name,
         status,
-        duration,
         result.note,
         w0 = SCENARIO_COLUMN_WIDTH,
         w1 = STATUS_COLUMN_WIDTH,
-        w2 = DURATION_COLUMN_WIDTH,
     );
 }
 

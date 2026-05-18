@@ -1,6 +1,6 @@
 {
-  "generated_at_unix_secs": 1779127683,
-  "generated_at_utc": "2026-05-18T18:08:03Z",
+  "generated_at_unix_secs": 1779127987,
+  "generated_at_utc": "2026-05-18T18:13:07Z",
   "target": "external",
   "mint_url": "http://127.0.0.1:3338",
   "mint": {
@@ -12,378 +12,324 @@
       "name": "p2pk_swap_unsigned_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 228,
       "note": "swap rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "p2pk_partial_signatures_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 186,
       "note": "partial spend rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "p2pk_swap_signed_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 185,
       "note": "swap succeeded with 2 output signature(s)"
     },
     {
       "name": "p2pk_multisig_2of3",
       "target": "external",
       "status": "pass",
-      "duration_ms": 207,
       "note": "2-of-3 multisig accepted only valid signer set"
     },
     {
       "name": "p2pk_locktime_before_expiry_primary_only",
       "target": "external",
       "status": "pass",
-      "duration_ms": 226,
       "note": "primary path works before locktime; refund path rejected"
     },
     {
       "name": "p2pk_locktime_after_expiry_primary_still_works",
       "target": "external",
       "status": "pass",
-      "duration_ms": 204,
       "note": "primary path still works after locktime"
     },
     {
       "name": "p2pk_locktime_after_expiry_no_refund_anyone_can_spend",
       "target": "external",
       "status": "fail",
-      "duration_ms": 176,
       "note": "anyone-can-spend after locktime: Http transport error Some(400): {\"code\":99999}"
     },
     {
       "name": "p2pk_multisig_locktime_primary_still_works",
       "target": "external",
       "status": "pass",
-      "duration_ms": 207,
       "note": "primary multisig still works after locktime"
     },
     {
       "name": "p2pk_wrong_signer_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 226,
       "note": "wrong signer rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "p2pk_duplicate_signatures_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 243,
       "note": "duplicate signatures rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "htlc_preimage_only_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 209,
       "note": "preimage-only HTLC spend rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "htlc_signature_only_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 221,
       "note": "signature-only HTLC spend rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "htlc_swap_preimage_and_signature_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 200,
       "note": "HTLC swap succeeded with 2 output signature(s)"
     },
     {
       "name": "htlc_wrong_preimage_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 171,
       "note": "wrong HTLC preimage rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "htlc_locktime_after_expiry_refund_succeeds",
       "target": "external",
       "status": "fail",
-      "duration_ms": 245,
       "note": "HTLC refund after locktime: Token not verified"
     },
     {
       "name": "htlc_multisig_2of3",
       "target": "external",
       "status": "pass",
-      "duration_ms": 207,
       "note": "HTLC 2-of-3 multisig enforced correctly"
     },
     {
       "name": "htlc_receiver_path_after_locktime",
       "target": "external",
       "status": "pass",
-      "duration_ms": 202,
       "note": "HTLC receiver path remains valid after locktime"
     },
     {
       "name": "p2pk_sigall_requires_transaction_signature",
       "target": "external",
       "status": "pass",
-      "duration_ms": 212,
       "note": "SIG_ALL rejected unsigned spend: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "p2pk_sigall_sig_inputs_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 175,
       "note": "SIG_INPUTS signatures rejected for SIG_ALL: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "p2pk_sigall_multisig_2of3",
       "target": "external",
       "status": "pass",
-      "duration_ms": 180,
       "note": "SIG_ALL 2-of-3 multisig enforced correctly"
     },
     {
       "name": "p2pk_sigall_wrong_signer_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 142,
       "note": "wrong SIG_ALL signer rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "p2pk_sigall_duplicate_signatures_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 186,
       "note": "duplicate SIG_ALL signatures rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "p2pk_sigall_locktime_before_expiry_primary_only",
       "target": "external",
       "status": "pass",
-      "duration_ms": 198,
       "note": "SIG_ALL primary path works before locktime; refund path rejected"
     },
     {
       "name": "p2pk_sigall_locktime_after_expiry_primary_still_works",
       "target": "external",
       "status": "pass",
-      "duration_ms": 203,
       "note": "SIG_ALL primary path still works after locktime"
     },
     {
       "name": "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend",
       "target": "external",
       "status": "fail",
-      "duration_ms": 199,
       "note": "SIG_ALL anyone-can-spend: Http transport error Some(400): {\"code\":99999}"
     },
     {
       "name": "p2pk_sigall_multisig_locktime_primary_still_works",
       "target": "external",
       "status": "pass",
-      "duration_ms": 227,
       "note": "SIG_ALL primary multisig still works after locktime"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_data_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 440,
       "note": "mixed SIG_ALL proofs rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_kind_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 415,
       "note": "mixed SIG_ALL proof kinds rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "p2pk_sigall_mixed_proofs_different_tags_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 374,
       "note": "mixed SIG_ALL proof tags rejected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "p2pk_sigall_multisig_before_locktime",
       "target": "external",
       "status": "pass",
-      "duration_ms": 170,
       "note": "SIG_ALL 2-of-3 primary multisig works before locktime"
     },
     {
       "name": "p2pk_sigall_more_signatures_than_required",
       "target": "external",
       "status": "pass",
-      "duration_ms": 176,
       "note": "SIG_ALL accepted more valid signatures than required"
     },
     {
       "name": "p2pk_sigall_refund_multisig_2of2",
       "target": "external",
       "status": "pass",
-      "duration_ms": 177,
       "note": "SIG_ALL 2-of-2 refund multisig enforced correctly"
     },
     {
       "name": "p2pk_sigall_output_amounts_swapped_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 183,
       "note": "tampered SIG_ALL outputs rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "htlc_sigall_preimage_only_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 166,
       "note": "SIG_ALL HTLC preimage-only rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "htlc_sigall_signature_only_fails",
       "target": "external",
       "status": "fail",
-      "duration_ms": 208,
       "note": "SIG_ALL HTLC signature-only: swap unexpectedly succeeded"
     },
     {
       "name": "htlc_sigall_requires_preimage_and_transaction_signature",
       "target": "external",
       "status": "pass",
-      "duration_ms": 217,
       "note": "SIG_ALL HTLC swap succeeded with 2 output signature(s)"
     },
     {
       "name": "htlc_sigall_wrong_preimage_fails",
       "target": "external",
       "status": "fail",
-      "duration_ms": 188,
       "note": "SIG_ALL HTLC wrong preimage: swap unexpectedly succeeded"
     },
     {
       "name": "htlc_sigall_locktime_after_expiry_refund_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 204,
       "note": "SIG_ALL HTLC refund path worked after locktime"
     },
     {
       "name": "htlc_sigall_multisig_2of3",
       "target": "external",
       "status": "pass",
-      "duration_ms": 212,
       "note": "SIG_ALL HTLC 2-of-3 multisig enforced correctly"
     },
     {
       "name": "htlc_sigall_receiver_path_after_locktime",
       "target": "external",
       "status": "pass",
-      "duration_ms": 215,
       "note": "SIG_ALL HTLC receiver path remains valid after locktime"
     },
     {
       "name": "melt_p2pk_unsigned_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 172,
       "note": "unsigned melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "melt_p2pk_signed_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 213,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_htlc_preimage_only_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 196,
       "note": "preimage-only melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "melt_htlc_signature_only_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 219,
       "note": "signature-only melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "melt_htlc_preimage_and_signature_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 191,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_p2pk_sigall_unsigned_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 224,
       "note": "unsigned SIG_ALL melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None"
     },
     {
       "name": "melt_p2pk_sigall_sig_inputs_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 212,
       "note": "SIG_INPUTS melt rejected for SIG_ALL as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "melt_p2pk_sigall_transaction_signature_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 208,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_htlc_sigall_preimage_only_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 190,
       "note": "preimage-only SIG_ALL melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "melt_htlc_sigall_sig_inputs_fail",
       "target": "external",
       "status": "pass",
-      "duration_ms": 187,
       "note": "SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "melt_htlc_sigall_preimage_and_transaction_signature_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 193,
       "note": "melt succeeded with state PAID"
     },
     {
       "name": "melt_p2pk_post_locktime_anyone_can_spend",
       "target": "external",
       "status": "fail",
-      "duration_ms": 224,
       "note": "[submit] melt anyone-can-spend after locktime"
     },
     {
       "name": "melt_p2pk_before_locktime_wrong_key_fails",
       "target": "external",
       "status": "pass",
-      "duration_ms": 266,
       "note": "wrong-key melt rejected before locktime as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some(\"Token not verified\")"
     },
     {
       "name": "melt_p2pk_before_locktime_correct_key_succeeds",
       "target": "external",
       "status": "pass",
-      "duration_ms": 240,
       "note": "melt succeeded with state PAID"
     }
   ]
