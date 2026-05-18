@@ -98,6 +98,24 @@ python3 tools/build_readme.py
 - `Nutmix` aligns better with `--sigall-mode standard` than with `legacy`.
 - External negative cases are accepted as passes when the mint returns a protocol-shaped rejection even if the exact error text differs from CDK.
 
+## Analysis
+
+### CDK
+
+`cdk-mintd` currently passes the full tracked suite and serves as the reference behavior for this runner.
+
+### Nutmix
+
+`Nutmix` aligns more closely with `standard` `SIG_ALL` behavior than with `legacy`. The remaining differences appear concentrated in a smaller set of locktime/refund-path and HTLC `SIG_ALL` cases.
+
+### Nutshell
+
+With `standard` `SIG_ALL`, `Nutshell` shows broader compatibility gaps concentrated around `SIG_ALL`, including post-locktime P2PK behavior, HTLC first-input-only witness handling, and positive melt `SIG_ALL` cases.
+
+### Nutshell (Legacy SIG_ALL)
+
+`legacy` `SIG_ALL` materially improves Nutshell swap compatibility, which suggests compatibility with an older `SIG_ALL` message format. Even under `legacy`, some post-locktime P2PK, HTLC `SIG_ALL`, output-tamper, and melt `SIG_ALL` differences remain.
+
 ## Notes
 
 - The runner does not modify `cdk/` or `nutshell/`.
