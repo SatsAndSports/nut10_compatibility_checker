@@ -1,9 +1,9 @@
 {
-  "generated_at_unix_secs": 1779129258,
-  "generated_at_utc": "2026-05-18T18:34:18Z",
+  "generated_at_unix_secs": 1779131118,
+  "generated_at_utc": "2026-05-18T19:05:18Z",
   "sigall_mode": "standard",
   "target": "cdk",
-  "mint_url": "http://127.0.0.1:38555",
+  "mint_url": "http://127.0.0.1:33985",
   "mint": {
     "name": null,
     "version": "cdk-mintd/0.16.0"
