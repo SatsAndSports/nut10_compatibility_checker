@@ -218,14 +218,34 @@ Current verification state:
 - current Nutshell swap results show broad non-SIG_ALL compatibility, with remaining failures concentrated around SIG_ALL behavior
 - legacy `SIG_ALL` mode significantly improves Nutshell swap compatibility versus standard mode
 
+## Nutshell Analysis
+
+Current external Nutshell summary:
+
+- non-SIG_ALL swap scenarios broadly pass
+- `SIG_ALL` legacy mode materially improves results compared to `standard`
+- the remaining failing scenarios are a smaller set concentrated around `SIG_ALL`
+
+Likely causes of the remaining legacy-mode failures:
+
+- Nutshell appears to verify the older SIG_ALL message format for swap: concatenated `secret` values and output `B_` values, without `C` or output `amount`
+- Nutshell's SIG_ALL P2PK verification appears to switch to refund pubkeys after locktime instead of keeping the primary path additive after expiry
+- Nutshell's HTLC verification checks per-proof witness/preimage presence before shared SIG_ALL validation, which conflicts with spec-compliant first-input-only SIG_ALL witness placement
+- the output-amount tamper case still succeeds in legacy mode, which is consistent with the older SIG_ALL format not binding output amounts
+
+Interpretation:
+
+- the legacy SIG_ALL option is useful as a diagnostic and interoperability mode
+- the remaining failing Nutshell scenarios should currently be treated as likely real compatibility gaps, not runner setup failures
+
 ## Next Steps
 
 - expand toward the broader CDK NUT-10 matrix
 - preserve parity notes between runner scenario names and the original CDK test files
 - decide whether to rename runner scenarios to match CDK test function names more directly
 - decide whether to keep the current split scenario naming or add an alternate reporting layer keyed by exact upstream CDK test names
-- analyze and categorize the remaining Nutshell legacy-mode SIG_ALL swap failures
-- decide whether any external-target expectations should become target-specific witness/message-shape adapters or remain as compatibility failures
+- decide whether to keep the remaining Nutshell SIG_ALL failures as explicit compatibility failures or add additional diagnostic target-specific modes
+- investigate whether a Nutshell-specific HTLC SIG_ALL witness-broadcast experiment is useful for diagnosis only
 - replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 
 ## Decisions Made
@@ -244,6 +264,7 @@ Current verification state:
 - keep the embedded mint zero-input-fee, but make melt funding quote-driven and target-behavior-aware
 - keep current melt scenarios explicitly fakewallet-scoped until a portable invoice/payment abstraction exists
 - keep `standard` as the default `SIG_ALL` mode and expose `legacy` as an explicit interoperability option
+- keep the current spec-compliant first-input-only SIG_ALL witness placement unchanged in the runner
 
 ## Open Questions
 

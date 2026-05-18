@@ -215,6 +215,13 @@ Current Nutshell status:
 - `--sigall-mode legacy` improves Nutshell compatibility substantially compared to the default `standard` mode
 - remaining failures in legacy mode are concentrated in a smaller SIG_ALL subset, especially HTLC SIG_ALL and some post-locktime/tamper cases
 
+Current interpretation of the remaining Nutshell legacy-mode failures:
+
+- P2PK SIG_ALL mostly improves under legacy mode, which strongly suggests Nutshell still verifies the older SIG_ALL message format
+- some post-locktime P2PK SIG_ALL scenarios still fail, which appears to be related to Nutshell preferring the refund path after locktime instead of keeping the primary path additive
+- several HTLC SIG_ALL scenarios still fail, and Nutshell's verification path appears to require per-proof HTLC witness/preimage presence before aggregate SIG_ALL validation
+- the output-amount tamper case still succeeds in legacy mode, which is consistent with the older SIG_ALL message format not binding output amounts
+
 About `SIG_ALL` modes:
 
 - `standard`
@@ -232,7 +239,6 @@ The `legacy` mode exists as a diagnostic and interoperability mode. The default 
 
 ## Next Steps
 
-- add external mint CLI mode
-- run swap suite against Nutshell
-- compare Nutshell results against CDK
+- investigate the remaining Nutshell SIG_ALL failures in more detail
+- decide whether any additional target-specific diagnostic modes are worthwhile
 - later generalize melt for non-fakewallet targets
