@@ -8,6 +8,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow};
 use bip39::Mnemonic;
+use chrono::{DateTime, SecondsFormat, Utc};
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::{blind_message, construct_proofs};
 use cdk::mint_url::MintUrl;
@@ -100,11 +101,19 @@ struct ScenarioResult {
     note: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct MintMetadata {
+    name: Option<String>,
+    version: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 struct Report {
     generated_at_unix_secs: u64,
+    generated_at_utc: String,
     target: String,
     mint_url: String,
+    mint: MintMetadata,
     results: Vec<ScenarioResult>,
 }
 
@@ -158,6 +167,13 @@ struct TargetProfile {
     mint_url: String,
     manual_http_funding: bool,
     relaxed_external_negative_errors: bool,
+}
+
+#[derive(Debug, Clone)]
+struct RunMetadata {
+    generated_at_unix_secs: u64,
+    generated_at_utc: String,
+    mint: MintMetadata,
 }
 
 static TARGET_PROFILE: OnceLock<TargetProfile> = OnceLock::new();
@@ -226,8 +242,10 @@ async fn main() -> Result<()> {
     };
     let _ = TARGET_PROFILE.set(target.clone());
     let _ = SIGALL_MODE.set(args.sigall_mode);
+    let run_metadata = fetch_run_metadata(&target).await?;
 
     let suite_result: Result<Report> = async {
+        print_run_metadata(&target, &run_metadata);
         let scenarios: Vec<(&str, Box<dyn FnOnce(String) -> ScenarioFuture + Send>)> = vec![
             scenario(
                 "p2pk_swap_unsigned_fails",
@@ -450,12 +468,11 @@ async fn main() -> Result<()> {
         }
 
         let report = Report {
-            generated_at_unix_secs: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .context("system clock before unix epoch")?
-                .as_secs(),
+            generated_at_unix_secs: run_metadata.generated_at_unix_secs,
+            generated_at_utc: run_metadata.generated_at_utc.clone(),
             target: target.name.clone(),
             mint_url: target.mint_url.clone(),
+            mint: run_metadata.mint.clone(),
             results,
         };
 
@@ -703,6 +720,43 @@ impl LocalMintHandle {
             (Err(task_err), Err(cleanup_err)) => Err(anyhow!("{task_err}; {cleanup_err}")),
         }
     }
+}
+
+async fn fetch_run_metadata(target: &TargetProfile) -> Result<RunMetadata> {
+    let now = SystemTime::now();
+    let generated_at_unix_secs = now
+        .duration_since(UNIX_EPOCH)
+        .context("system clock before unix epoch")?
+        .as_secs();
+    let generated_at_utc = DateTime::<Utc>::from(now).to_rfc3339_opts(SecondsFormat::Secs, true);
+
+    let mint_url = MintUrl::from_str(&target.mint_url)?;
+    let client = HttpClient::new(mint_url, None);
+    let mint_info = client.get_mint_info().await?;
+    let mint = MintMetadata {
+        name: mint_info.name.clone(),
+        version: mint_info.version.as_ref().map(ToString::to_string),
+    };
+
+    Ok(RunMetadata {
+        generated_at_unix_secs,
+        generated_at_utc,
+        mint,
+    })
+}
+
+fn print_run_metadata(target: &TargetProfile, metadata: &RunMetadata) {
+    println!(
+        "Version:    {}",
+        metadata.mint.version.as_deref().unwrap_or("<unknown>")
+    );
+    println!("Target:     {}", target.name);
+    println!("Mint URL:   {}", target.mint_url);
+    if let Some(name) = metadata.mint.name.as_deref() {
+        println!("Mint Name:  {}", name);
+    }
+    println!("Started At: {}", metadata.generated_at_utc);
+    println!();
 }
 
 impl TestContext {
