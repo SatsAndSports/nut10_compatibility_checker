@@ -150,6 +150,7 @@ Current behavior:
 - prints a terminal results table
 - writes a JSON report file
 - optionally writes JSON reports to repo-root `reports/<report-name>.json`
+- keeps canonical tracked reports in repo-root `reports/`
 - exits non-zero if any scenario fails
 - reports scenario status as `pass`, `fail`, or `skip`
 - removes the temporary mint work directory during shutdown
@@ -159,6 +160,7 @@ Current behavior:
 - supports `SIG_ALL` signing modes: `standard` and `legacy`
 - prints the written JSON report path to stdout when `--report-name` is used
 - prints `SIG_ALL Mode: legacy` in stdout metadata when legacy mode is selected
+- generates `README.md` from `_README.md` plus `reports/cdk.json`, `reports/nutshell.json`, and `reports/nutmix.json`
 
 The first implemented scenarios are:
 
@@ -360,6 +362,7 @@ Harness caveat for external targets:
 - keep `standard` as the default `SIG_ALL` mode and expose `legacy` as an explicit interoperability option
 - keep the current spec-compliant first-input-only SIG_ALL witness placement unchanged in the runner
 - use broader protocol-shaped negative-case acceptance for external targets while keeping the embedded CDK target strict
+- keep the project README generated from tracked report artifacts because the main purpose of the repo is to show current compatibility results
 
 ## Open Questions
 
