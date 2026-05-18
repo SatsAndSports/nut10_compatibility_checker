@@ -12,9 +12,9 @@ OUTPUT_PATH = ROOT / "README.md"
 PLACEHOLDER = "{{RESULTS_TABLES}}"
 REPORT_SPECS = [
     ("CDK", "cdk", "cdk"),
+    ("Nutmix", "nutmix", "nutmix"),
     ("Nutshell", "nutshell", "nutshell"),
     ("Nutshell (Legacy SIG_ALL)", "nutshell-legacySIGALL", "nutshell-legacy-sigall"),
-    ("Nutmix", "nutmix", "nutmix"),
 ]
 
 
