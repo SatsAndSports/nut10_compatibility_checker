@@ -207,6 +207,8 @@ Current external target notes:
 
 - start with `swap`
 - keep `melt` fakewallet-scoped until invoice/payment setup is abstracted by target
+- for external targets, the current harness may still be too strict about exact negative-case error text
+- some mints return generic failures like `Token not verified` or opaque error codes even when the negative behavior is correct
 
 Current Nutshell status:
 
@@ -230,6 +232,13 @@ About `SIG_ALL` modes:
   Uses the older Nutshell-style aggregated message construction for runner-side `SIG_ALL` signatures.
 
 The `legacy` mode exists as a diagnostic and interoperability mode. The default remains `standard`.
+
+Current Nutmix status:
+
+- external swap execution works against a local Nutmix mint
+- Nutmix appears closer to `standard` SIG_ALL mode than to `legacy`
+- current raw failure counts likely overstate incompatibility because Nutmix often returns generic negative-case errors such as `Token not verified` or HTTP `400` with `{"code":99999}`
+- in other words: for Nutmix, some current `FAIL` rows likely mean "correctly rejected, but with an unexpected error shape"
 
 ## Notes
 

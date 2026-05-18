@@ -217,6 +217,9 @@ Current verification state:
 - external proof funding now uses explicit HTTP quote polling and minting instead of websocket-driven proof streaming
 - current Nutshell swap results show broad non-SIG_ALL compatibility, with remaining failures concentrated around SIG_ALL behavior
 - legacy `SIG_ALL` mode significantly improves Nutshell swap compatibility versus standard mode
+- external target mode also works against a running Nutmix mint for swap execution
+- current Nutmix swap results suggest stronger alignment with `standard` SIG_ALL mode than with `legacy`
+- the current harness is likely still too strict on external negative-case error messages, which inflates apparent failure counts for mints that return generic errors
 
 ## Nutshell Analysis
 
@@ -238,6 +241,26 @@ Interpretation:
 - the legacy SIG_ALL option is useful as a diagnostic and interoperability mode
 - the remaining failing Nutshell scenarios should currently be treated as likely real compatibility gaps, not runner setup failures
 
+## Nutmix Analysis
+
+Current external Nutmix summary:
+
+- non-SIG_ALL positive swap scenarios broadly pass
+- `standard` SIG_ALL mode performs better than `legacy`
+- many negative cases fail for the expected behavioral reason but return generic errors such as `Token not verified` or HTTP `400` with `{"code":99999}`
+
+Interpretation:
+
+- Nutmix appears closer to CDK/spec SIG_ALL semantics than to the older legacy Nutshell format
+- the raw failure count overstates the true compatibility gap because the runner still expects more specific error messages than Nutmix provides for many negative tests
+- after normalizing generic external negative-case errors, the remaining meaningful Nutmix failures are likely concentrated in a smaller subset, especially some locktime/refund-path cases and a few HTLC SIG_ALL cases
+
+Harness caveat for external targets:
+
+- for external mints, the current harness can be too strict about exact failure text
+- generic rejections such as `Token not verified` or opaque error codes may still represent correct negative behavior
+- this means external-target negative results should be interpreted carefully until error expectation matching is widened or target-specific
+
 ## Next Steps
 
 - expand toward the broader CDK NUT-10 matrix
@@ -246,6 +269,8 @@ Interpretation:
 - decide whether to keep the current split scenario naming or add an alternate reporting layer keyed by exact upstream CDK test names
 - decide whether to keep the remaining Nutshell SIG_ALL failures as explicit compatibility failures or add additional diagnostic target-specific modes
 - investigate whether a Nutshell-specific HTLC SIG_ALL witness-broadcast experiment is useful for diagnosis only
+- reduce false negatives for external targets by relaxing or target-scoping expected error matching for negative cases
+- rerun Nutmix after that normalization to isolate the smaller set of real compatibility gaps
 - replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 
 ## Decisions Made
@@ -265,6 +290,7 @@ Interpretation:
 - keep current melt scenarios explicitly fakewallet-scoped until a portable invoice/payment abstraction exists
 - keep `standard` as the default `SIG_ALL` mode and expose `legacy` as an explicit interoperability option
 - keep the current spec-compliant first-input-only SIG_ALL witness placement unchanged in the runner
+- accept that some external mints currently need broader negative-case error matching before raw pass/fail counts become fully comparable
 
 ## Open Questions
 
