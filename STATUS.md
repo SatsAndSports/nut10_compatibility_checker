@@ -246,6 +246,28 @@ Interpretation:
 - the legacy SIG_ALL option is useful as a diagnostic and interoperability mode
 - the remaining failing Nutshell scenarios should currently be treated as likely real compatibility gaps, not runner setup failures
 
+Remaining Nutshell `legacy` swap failures by likely cause:
+
+- `p2pk_sigall_locktime_after_expiry_primary_still_works`
+- `p2pk_sigall_multisig_locktime_primary_still_works`
+Cause:
+Nutshell appears to drop the primary SIG_ALL P2PK path after locktime expiry and switch to refund pubkeys only, instead of keeping the primary path additive after expiry.
+
+- `p2pk_sigall_output_amounts_swapped_fail`
+Cause:
+Legacy SIG_ALL does not appear to bind output amounts into the signed message, so swapping output amounts after signing is not detected.
+
+- `htlc_sigall_requires_preimage_and_transaction_signature`
+- `htlc_sigall_locktime_after_expiry_refund_succeeds`
+- `htlc_sigall_multisig_2of3`
+- `htlc_sigall_receiver_path_after_locktime`
+Cause:
+Nutshell's HTLC verification appears to require per-proof witness or preimage presence before aggregate SIG_ALL validation, which conflicts with spec-compliant first-input-only SIG_ALL witness placement.
+
+- `p2pk_sigall_mixed_proofs_different_kind_fail`
+Cause:
+This remains partially diagnostic rather than conclusive because the HTLC SIG_ALL control path itself does not currently succeed under spec-style first-input-only witness placement.
+
 ## Nutmix Analysis
 
 Current external Nutmix summary:
@@ -260,6 +282,22 @@ Interpretation:
 - the earlier raw failure count overstated the true compatibility gap because the runner was too strict about negative-case error text
 - after relaxing external negative-case matching, Nutmix's standard-mode swap failures drop to a smaller set
 - after normalizing generic external negative-case errors, the remaining meaningful Nutmix failures are likely concentrated in a smaller subset, especially some locktime/refund-path cases and a few HTLC SIG_ALL cases
+
+Remaining Nutmix `standard` swap failures by likely cause:
+
+- `p2pk_locktime_after_expiry_no_refund_anyone_can_spend`
+- `p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend`
+Cause:
+Nutmix appears to reject proofs that should become anyone-can-spend after locktime expiry when no refund keys are present.
+
+- `htlc_locktime_after_expiry_refund_succeeds`
+Cause:
+Nutmix appears not to accept the HTLC refund path after locktime expiry in the way the runner exercises it, despite ordinary HTLC receiver-path scenarios passing.
+
+- `htlc_sigall_signature_only_fails`
+- `htlc_sigall_wrong_preimage_fails`
+Cause:
+These unexpectedly succeed, which suggests a possible HTLC SIG_ALL preimage-enforcement issue rather than just an error-shape mismatch.
 
 Harness caveat for external targets:
 
@@ -276,6 +314,7 @@ Harness caveat for external targets:
 - decide whether to keep the remaining Nutshell SIG_ALL failures as explicit compatibility failures or add additional diagnostic target-specific modes
 - investigate whether a Nutshell-specific HTLC SIG_ALL witness-broadcast experiment is useful for diagnosis only
 - investigate the remaining reduced Nutmix standard-mode failure set in detail
+- if useful, gather mint-side logs from Nutshell and Nutmix for one representative scenario in each remaining failure cluster
 - replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 
 ## Decisions Made

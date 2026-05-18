@@ -227,6 +227,12 @@ Current interpretation of the remaining Nutshell legacy-mode failures:
 - several HTLC SIG_ALL scenarios still fail, and Nutshell's verification path appears to require per-proof HTLC witness/preimage presence before aggregate SIG_ALL validation
 - the output-amount tamper case still succeeds in legacy mode, which is consistent with the older SIG_ALL message format not binding output amounts
 
+Remaining Nutshell legacy-mode failure clusters:
+
+- post-locktime P2PK SIG_ALL primary-path cases
+- HTLC SIG_ALL first-input-only witness cases
+- output-amount tamper detection in legacy SIG_ALL mode
+
 About `SIG_ALL` modes:
 
 - `standard`
@@ -244,6 +250,12 @@ Current Nutmix status:
 - normalized swap count is currently:
   - `standard`: 5 failures
 - in other words: many earlier Nutmix failures were negative cases rejected correctly but reported with generic error shapes
+
+Remaining Nutmix standard-mode failure clusters:
+
+- anyone-can-spend after expired locktime
+- HTLC refund-after-locktime
+- HTLC SIG_ALL cases where missing or wrong preimage unexpectedly does not fail
 
 ## Notes
 
