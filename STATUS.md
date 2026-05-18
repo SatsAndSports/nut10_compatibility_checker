@@ -220,6 +220,11 @@ Current verification state:
 - external target mode also works against a running Nutmix mint for swap execution
 - current Nutmix swap results suggest stronger alignment with `standard` SIG_ALL mode than with `legacy`
 - the current harness is likely still too strict on external negative-case error messages, which inflates apparent failure counts for mints that return generic errors
+- external negative-case handling has now been relaxed: protocol-like rejections are accepted for external targets even when exact message text differs
+- normalized external swap counts are currently:
+  - Nutshell `standard`: 15 failures
+  - Nutshell `legacy`: 8 failures
+  - Nutmix `standard`: 5 failures
 
 ## Nutshell Analysis
 
@@ -252,14 +257,15 @@ Current external Nutmix summary:
 Interpretation:
 
 - Nutmix appears closer to CDK/spec SIG_ALL semantics than to the older legacy Nutshell format
-- the raw failure count overstates the true compatibility gap because the runner still expects more specific error messages than Nutmix provides for many negative tests
+- the earlier raw failure count overstated the true compatibility gap because the runner was too strict about negative-case error text
+- after relaxing external negative-case matching, Nutmix's standard-mode swap failures drop to a smaller set
 - after normalizing generic external negative-case errors, the remaining meaningful Nutmix failures are likely concentrated in a smaller subset, especially some locktime/refund-path cases and a few HTLC SIG_ALL cases
 
 Harness caveat for external targets:
 
-- for external mints, the current harness can be too strict about exact failure text
-- generic rejections such as `Token not verified` or opaque error codes may still represent correct negative behavior
-- this means external-target negative results should be interpreted carefully until error expectation matching is widened or target-specific
+- for external mints, negative-case validation now accepts protocol-like rejections even when exact failure text differs from CDK
+- this reduces false negatives for targets that return generic responses such as `Token not verified` or opaque HTTP 400 payloads
+- exact error text is still preserved in the report for human inspection
 
 ## Next Steps
 
@@ -269,8 +275,7 @@ Harness caveat for external targets:
 - decide whether to keep the current split scenario naming or add an alternate reporting layer keyed by exact upstream CDK test names
 - decide whether to keep the remaining Nutshell SIG_ALL failures as explicit compatibility failures or add additional diagnostic target-specific modes
 - investigate whether a Nutshell-specific HTLC SIG_ALL witness-broadcast experiment is useful for diagnosis only
-- reduce false negatives for external targets by relaxing or target-scoping expected error matching for negative cases
-- rerun Nutmix after that normalization to isolate the smaller set of real compatibility gaps
+- investigate the remaining reduced Nutmix standard-mode failure set in detail
 - replace fakewallet-specific melt invoice generation with target-specific invoice setup when moving beyond embedded CDK fakewallet
 
 ## Decisions Made
@@ -290,7 +295,7 @@ Harness caveat for external targets:
 - keep current melt scenarios explicitly fakewallet-scoped until a portable invoice/payment abstraction exists
 - keep `standard` as the default `SIG_ALL` mode and expose `legacy` as an explicit interoperability option
 - keep the current spec-compliant first-input-only SIG_ALL witness placement unchanged in the runner
-- accept that some external mints currently need broader negative-case error matching before raw pass/fail counts become fully comparable
+- use broader protocol-shaped negative-case acceptance for external targets while keeping the embedded CDK target strict
 
 ## Open Questions
 

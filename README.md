@@ -207,8 +207,8 @@ Current external target notes:
 
 - start with `swap`
 - keep `melt` fakewallet-scoped until invoice/payment setup is abstracted by target
-- for external targets, the current harness may still be too strict about exact negative-case error text
-- some mints return generic failures like `Token not verified` or opaque error codes even when the negative behavior is correct
+- for external targets, negative-case validation is now relaxed to accept protocol-like rejections even when exact error text differs from CDK
+- exact error text is still shown in the report for human diagnosis
 
 Current Nutshell status:
 
@@ -216,6 +216,9 @@ Current Nutshell status:
 - non-SIG_ALL swap scenarios largely pass
 - `--sigall-mode legacy` improves Nutshell compatibility substantially compared to the default `standard` mode
 - remaining failures in legacy mode are concentrated in a smaller SIG_ALL subset, especially HTLC SIG_ALL and some post-locktime/tamper cases
+- normalized swap counts are currently:
+  - `standard`: 15 failures
+  - `legacy`: 8 failures
 
 Current interpretation of the remaining Nutshell legacy-mode failures:
 
@@ -237,8 +240,10 @@ Current Nutmix status:
 
 - external swap execution works against a local Nutmix mint
 - Nutmix appears closer to `standard` SIG_ALL mode than to `legacy`
-- current raw failure counts likely overstate incompatibility because Nutmix often returns generic negative-case errors such as `Token not verified` or HTTP `400` with `{"code":99999}`
-- in other words: for Nutmix, some current `FAIL` rows likely mean "correctly rejected, but with an unexpected error shape"
+- after relaxing external negative-case validation, the standard-mode swap result set is much cleaner
+- normalized swap count is currently:
+  - `standard`: 5 failures
+- in other words: many earlier Nutmix failures were negative cases rejected correctly but reported with generic error shapes
 
 ## Notes
 

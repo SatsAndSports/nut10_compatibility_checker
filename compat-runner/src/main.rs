@@ -142,12 +142,20 @@ struct MeltQuoteInfo {
     fee_reserve: Amount,
 }
 
+#[derive(Debug, Clone)]
+struct ParsedProtocolError {
+    http_status: Option<u16>,
+    code: Option<i64>,
+    detail: Option<String>,
+}
+
 #[derive(Clone)]
 struct TargetProfile {
     name: String,
     mint_url: String,
     supports_fakewallet_melt: bool,
     manual_http_funding: bool,
+    relaxed_external_negative_errors: bool,
 }
 
 static TARGET_PROFILE: OnceLock<TargetProfile> = OnceLock::new();
@@ -202,6 +210,7 @@ async fn main() -> Result<()> {
             mint_url: mint_url.clone(),
             supports_fakewallet_melt: false,
             manual_http_funding: true,
+            relaxed_external_negative_errors: true,
         },
         (None, Some(mint)) => TargetProfile {
             name: args
@@ -211,6 +220,7 @@ async fn main() -> Result<()> {
             mint_url: mint.mint_url.clone(),
             supports_fakewallet_melt: true,
             manual_http_funding: false,
+            relaxed_external_negative_errors: false,
         },
         (None, None) => return Err(anyhow!("internal error: no mint target available")),
     };
@@ -1125,6 +1135,86 @@ fn error_contains_any(err: &Error, expected_substrings: &[&str]) -> bool {
         .any(|substring| display.contains(substring) || debug.contains(substring))
 }
 
+fn parse_unknown_error_response(value: &str) -> ParsedProtocolError {
+    let mut code = None;
+    let mut detail = None;
+
+    if let Some(rest) = value.strip_prefix("code: ") {
+        let mut parts = rest.splitn(2, ", detail: ");
+        if let Some(code_str) = parts.next() {
+            code = code_str.trim().parse::<i64>().ok();
+        }
+        if let Some(detail_str) = parts.next() {
+            detail = Some(detail_str.to_string());
+        }
+    }
+
+    ParsedProtocolError {
+        http_status: Some(400),
+        code,
+        detail,
+    }
+}
+
+fn parse_http_error_body(status: Option<u16>, body: &str) -> Option<ParsedProtocolError> {
+    let value: serde_json::Value = serde_json::from_str(body).ok()?;
+    let code = value.get("code").and_then(serde_json::Value::as_i64);
+    let detail = value
+        .get("detail")
+        .and_then(serde_json::Value::as_str)
+        .map(ToString::to_string);
+
+    Some(ParsedProtocolError {
+        http_status: status,
+        code,
+        detail,
+    })
+}
+
+fn parsed_protocol_error(err: &Error) -> Option<ParsedProtocolError> {
+    match err {
+        Error::UnknownErrorResponse(value) => Some(parse_unknown_error_response(value)),
+        Error::HttpError(status, body) => parse_http_error_body(*status, body),
+        Error::DHKE(cdk::dhke::Error::TokenNotVerified) => Some(ParsedProtocolError {
+            http_status: Some(400),
+            code: Some(10001),
+            detail: Some(err.to_string()),
+        }),
+        Error::SignatureMissingOrInvalid => Some(ParsedProtocolError {
+            http_status: Some(400),
+            code: Some(20008),
+            detail: Some(err.to_string()),
+        }),
+        _ => None,
+    }
+}
+
+fn is_protocol_like_negative_error(err: &Error) -> bool {
+    let Some(parsed) = parsed_protocol_error(err) else {
+        return false;
+    };
+
+    if parsed.http_status != Some(400) {
+        return false;
+    }
+
+    parsed.code.is_some() || parsed.detail.is_some()
+}
+
+fn protocol_error_note(err: &Error) -> String {
+    match parsed_protocol_error(err) {
+        Some(parsed) => format!(
+            "accepted protocol-like rejection: status={:?}, code={:?}, detail={:?}",
+            parsed.http_status, parsed.code, parsed.detail
+        ),
+        None => err.to_string(),
+    }
+}
+
+fn current_target_profile() -> Option<&'static TargetProfile> {
+    TARGET_PROFILE.get()
+}
+
 fn expect_swap_failure(
     result: std::result::Result<cdk::nuts::SwapResponse, Error>,
     msg: &str,
@@ -1171,6 +1261,11 @@ fn expect_swap_failure(
 
             if error_contains_any(&err, expected_substrings) {
                 Ok(err.to_string())
+            } else if current_target_profile()
+                .is_some_and(|target| target.relaxed_external_negative_errors)
+                && is_protocol_like_negative_error(&err)
+            {
+                Ok(protocol_error_note(&err))
             } else {
                 Err(anyhow!(
                     "{msg}: unexpected error `{}`; expected one of {:?}",
@@ -1215,6 +1310,11 @@ fn expect_melt_failure(
 
             if error_contains_any(&err, expected_substrings) {
                 Ok(err.to_string())
+            } else if current_target_profile()
+                .is_some_and(|target| target.relaxed_external_negative_errors)
+                && is_protocol_like_negative_error(&err)
+            {
+                Ok(protocol_error_note(&err))
             } else {
                 Err(anyhow!(
                     "{msg}: unexpected error `{}`; expected one of {:?}",
