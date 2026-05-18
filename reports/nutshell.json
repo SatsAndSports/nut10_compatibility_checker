@@ -1,0 +1,390 @@
+{
+  "generated_at_unix_secs": 1779127710,
+  "generated_at_utc": "2026-05-18T18:08:30Z",
+  "target": "external",
+  "mint_url": "http://127.0.0.1:3339",
+  "mint": {
+    "name": "Local Nutshell Test Mint",
+    "version": "Nutshell/0.20.0"
+  },
+  "results": [
+    {
+      "name": "p2pk_swap_unsigned_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 369,
+      "note": "swap rejected as expected: Unknown error response: `code: 0, detail: Witness is missing for p2pk signature`"
+    },
+    {
+      "name": "p2pk_partial_signatures_fail",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 398,
+      "note": "partial spend rejected: Unknown error response: `code: 0, detail: Witness is missing for p2pk signature`"
+    },
+    {
+      "name": "p2pk_swap_signed_succeeds",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 449,
+      "note": "swap succeeded with 2 output signature(s)"
+    },
+    {
+      "name": "p2pk_multisig_2of3",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 442,
+      "note": "2-of-3 multisig accepted only valid signer set"
+    },
+    {
+      "name": "p2pk_locktime_before_expiry_primary_only",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 430,
+      "note": "primary path works before locktime; refund path rejected"
+    },
+    {
+      "name": "p2pk_locktime_after_expiry_primary_still_works",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 402,
+      "note": "primary path still works after locktime"
+    },
+    {
+      "name": "p2pk_locktime_after_expiry_no_refund_anyone_can_spend",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 475,
+      "note": "anyone-can-spend refund path worked after locktime"
+    },
+    {
+      "name": "p2pk_multisig_locktime_primary_still_works",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 433,
+      "note": "primary multisig still works after locktime"
+    },
+    {
+      "name": "p2pk_wrong_signer_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 411,
+      "note": "wrong signer rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_duplicate_signatures_fail",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 413,
+      "note": "duplicate signatures rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 1 < 2.`"
+    },
+    {
+      "name": "htlc_preimage_only_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 356,
+      "note": "preimage-only HTLC spend rejected: Unknown error response: `code: 11000, detail: no signatures in proof.`"
+    },
+    {
+      "name": "htlc_signature_only_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 385,
+      "note": "signature-only HTLC spend rejected: Unknown error response: `code: 11000, detail: no HTLC preimage provided`"
+    },
+    {
+      "name": "htlc_swap_preimage_and_signature_succeeds",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 461,
+      "note": "HTLC swap succeeded with 2 output signature(s)"
+    },
+    {
+      "name": "htlc_wrong_preimage_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 356,
+      "note": "wrong HTLC preimage rejected: Unknown error response: `code: 11000, detail: HTLC preimage must be 64 characters hex.`"
+    },
+    {
+      "name": "htlc_locktime_after_expiry_refund_succeeds",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 419,
+      "note": "HTLC refund path worked after locktime"
+    },
+    {
+      "name": "htlc_multisig_2of3",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 462,
+      "note": "HTLC 2-of-3 multisig enforced correctly"
+    },
+    {
+      "name": "htlc_receiver_path_after_locktime",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 397,
+      "note": "HTLC receiver path remains valid after locktime"
+    },
+    {
+      "name": "p2pk_sigall_requires_transaction_signature",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 360,
+      "note": "SIG_ALL rejected unsigned spend: Unknown error response: `code: 11000, detail: no witness in proof.`"
+    },
+    {
+      "name": "p2pk_sigall_sig_inputs_fail",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 385,
+      "note": "SIG_INPUTS signatures rejected for SIG_ALL: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_multisig_2of3",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 370,
+      "note": "SIG_ALL valid 2-of-3: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 2.`"
+    },
+    {
+      "name": "p2pk_sigall_wrong_signer_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 413,
+      "note": "wrong SIG_ALL signer rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_duplicate_signatures_fail",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 411,
+      "note": "duplicate SIG_ALL signatures rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 2.`"
+    },
+    {
+      "name": "p2pk_sigall_locktime_before_expiry_primary_only",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 347,
+      "note": "SIG_ALL primary before locktime: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_locktime_after_expiry_primary_still_works",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 358,
+      "note": "SIG_ALL primary after locktime: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_locktime_after_expiry_no_refund_anyone_can_spend",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 444,
+      "note": "SIG_ALL anyone-can-spend refund path worked after locktime"
+    },
+    {
+      "name": "p2pk_sigall_multisig_locktime_primary_still_works",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 387,
+      "note": "SIG_ALL primary multisig after locktime: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_mixed_proofs_different_data_fail",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 798,
+      "note": "alice-only SIG_ALL: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_mixed_proofs_different_kind_fail",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 767,
+      "note": "p2pk-only mixed-kind control: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_mixed_proofs_different_tags_fail",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 764,
+      "note": "plain-only mixed-tags control: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "p2pk_sigall_multisig_before_locktime",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 409,
+      "note": "SIG_ALL 2-of-3 before locktime: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 2.`"
+    },
+    {
+      "name": "p2pk_sigall_more_signatures_than_required",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 387,
+      "note": "extra valid signatures: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 2.`"
+    },
+    {
+      "name": "p2pk_sigall_refund_multisig_2of2",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 399,
+      "note": "2-of-2 refund multisig: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 2.`"
+    },
+    {
+      "name": "p2pk_sigall_output_amounts_swapped_fail",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 415,
+      "note": "restored original output amounts: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "htlc_sigall_preimage_only_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 349,
+      "note": "SIG_ALL HTLC preimage-only rejected: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage`"
+    },
+    {
+      "name": "htlc_sigall_signature_only_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 342,
+      "note": "SIG_ALL HTLC signature-only rejected: Unknown error response: `code: 11000, detail: no HTLC preimage provided`"
+    },
+    {
+      "name": "htlc_sigall_requires_preimage_and_transaction_signature",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 349,
+      "note": "SIG_ALL HTLC valid spend: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage`"
+    },
+    {
+      "name": "htlc_sigall_wrong_preimage_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 382,
+      "note": "wrong SIG_ALL HTLC preimage rejected: Unknown error response: `code: 11000, detail: HTLC preimage must be 64 characters hex.`"
+    },
+    {
+      "name": "htlc_sigall_locktime_after_expiry_refund_succeeds",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 376,
+      "note": "SIG_ALL HTLC refund after locktime: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage`"
+    },
+    {
+      "name": "htlc_sigall_multisig_2of3",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 398,
+      "note": "SIG_ALL HTLC 2-of-3: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage`"
+    },
+    {
+      "name": "htlc_sigall_receiver_path_after_locktime",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 380,
+      "note": "SIG_ALL HTLC receiver after locktime: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage`"
+    },
+    {
+      "name": "melt_p2pk_unsigned_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 474,
+      "note": "unsigned melt rejected as expected: Unknown error response: `code: 0, detail: Witness is missing for p2pk signature`"
+    },
+    {
+      "name": "melt_p2pk_signed_succeeds",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 455,
+      "note": "melt succeeded with state PAID"
+    },
+    {
+      "name": "melt_htlc_preimage_only_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 447,
+      "note": "preimage-only melt rejected as expected: Unknown error response: `code: 11000, detail: no signatures in proof.`"
+    },
+    {
+      "name": "melt_htlc_signature_only_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 453,
+      "note": "signature-only melt rejected as expected: Unknown error response: `code: 11000, detail: no HTLC preimage provided`"
+    },
+    {
+      "name": "melt_htlc_preimage_and_signature_succeeds",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 529,
+      "note": "melt succeeded with state PAID"
+    },
+    {
+      "name": "melt_p2pk_sigall_unsigned_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 436,
+      "note": "unsigned SIG_ALL melt rejected as expected: Unknown error response: `code: 11000, detail: no witness in proof.`"
+    },
+    {
+      "name": "melt_p2pk_sigall_sig_inputs_fail",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 480,
+      "note": "SIG_INPUTS melt rejected for SIG_ALL as expected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "melt_p2pk_sigall_transaction_signature_succeeds",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 451,
+      "note": "[submit] melt P2PK SIG_ALL valid"
+    },
+    {
+      "name": "melt_htlc_sigall_preimage_only_fails",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 435,
+      "note": "melt HTLC SIG_ALL preimage-only: unexpected error `Http transport error Some(500): Internal Server Error`; expected one of [\"Witness signatures not provided\", \"Witness did not provide signatures\", \"Witness is missing for htlc preimage\"]"
+    },
+    {
+      "name": "melt_htlc_sigall_sig_inputs_fail",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 458,
+      "note": "SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: accepted protocol-like rejection: status=Some(400), code=Some(11000), detail=Some(\"signature threshold not met. 0 < 1.\")"
+    },
+    {
+      "name": "melt_htlc_sigall_preimage_and_transaction_signature_succeeds",
+      "target": "external",
+      "status": "fail",
+      "duration_ms": 445,
+      "note": "[submit] melt HTLC SIG_ALL valid"
+    },
+    {
+      "name": "melt_p2pk_post_locktime_anyone_can_spend",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 510,
+      "note": "melt succeeded with state PAID"
+    },
+    {
+      "name": "melt_p2pk_before_locktime_wrong_key_fails",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 421,
+      "note": "wrong-key melt rejected before locktime as expected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
+    },
+    {
+      "name": "melt_p2pk_before_locktime_correct_key_succeeds",
+      "target": "external",
+      "status": "pass",
+      "duration_ms": 493,
+      "note": "melt succeeded with state PAID"
+    }
+  ]
+}

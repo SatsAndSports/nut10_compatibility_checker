@@ -111,7 +111,7 @@ Current result:
 
 - all three scenarios are now implemented in `compat-runner/`
 - all three pass against an embedded local zero-fee CDK mint
-- JSON output is currently written to `compat-runner/compat-report.json`
+- JSON output is optional and is written to repo-root `reports/<report-name>.json` when `--report-name` is provided
 - the runner has since been expanded to cover the full swap-side CDK spending-condition matrix
 
 These are intentionally smaller than the full suite and should validate:
@@ -149,6 +149,7 @@ Current behavior:
 - creates a fresh wallet context per scenario
 - prints a terminal results table
 - writes a JSON report file
+- optionally writes JSON reports to repo-root `reports/<report-name>.json`
 - exits non-zero if any scenario fails
 - reports scenario status as `pass`, `fail`, or `skip`
 - removes the temporary mint work directory during shutdown
@@ -156,6 +157,7 @@ Current behavior:
 - creates fresh fake BOLT11 invoices for melt scenarios
 - supports external mint URL mode with suite filtering
 - supports `SIG_ALL` signing modes: `standard` and `legacy`
+- prints the written JSON report path to stdout when `--report-name` is used
 
 The first implemented scenarios are:
 

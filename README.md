@@ -67,7 +67,7 @@ This will:
 - start an embedded zero-fee local CDK mint
 - run the current suite
 - print a terminal table
-- write JSON to `compat-runner/compat-report.json`
+- optionally write JSON to `reports/<report-name>.json` when `--report-name` is provided
 
 You can also build-check first:
 
@@ -161,7 +161,7 @@ Current runner CLI shape:
 
 ```bash
 cd compat-runner
-cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap
+cargo run -- --mint-url http://127.0.0.1:3339 --report-name nutshell --suite swap
 ```
 
 CLI behavior:
@@ -170,8 +170,8 @@ CLI behavior:
   default embedded CDK mode
 - `--mint-url`
   external mint mode
-- `--target-name`
-  label for reports
+- `--report-name`
+  optional JSON artifact name written to `../reports/<report-name>.json`
 - `--suite swap|melt|all`
   suite selection
 - `--sigall-mode standard|legacy`
@@ -194,25 +194,25 @@ cargo run -- --suite swap
 ```bash
 # external Nutshell, swap only
 cd compat-runner
-cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap
+cargo run -- --mint-url http://127.0.0.1:3339 --report-name nutshell --suite swap
 ```
 
 ```bash
 # external Nutshell, swap only, legacy SIG_ALL mode
 cd compat-runner
-cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite swap --sigall-mode legacy
+cargo run -- --mint-url http://127.0.0.1:3339 --report-name nutshell --suite swap --sigall-mode legacy
 ```
 
 ```bash
 # external Nutshell, full melt suite
 cd compat-runner
-cargo run -- --mint-url http://127.0.0.1:3339 --target-name nutshell --suite melt
+cargo run -- --mint-url http://127.0.0.1:3339 --report-name nutshell --suite melt
 ```
 
 ```bash
 # external Nutmix, full melt suite
 cd compat-runner
-cargo run -- --mint-url http://127.0.0.1:3338 --target-name nutmix --suite melt
+cargo run -- --mint-url http://127.0.0.1:3338 --report-name nutmix --suite melt
 ```
 
 Current external target notes:

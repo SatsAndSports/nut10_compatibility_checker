@@ -27,7 +27,6 @@ use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
 
-const DEFAULT_JSON_REPORT_PATH: &str = "compat-report.json";
 const DEFAULT_MINT_HOST: &str = "127.0.0.1";
 const MINT_STARTUP_ATTEMPTS: u8 = 5;
 const MINT_STARTUP_TIMEOUT_SECS: u64 = 5;
@@ -198,9 +197,9 @@ struct Args {
     #[arg(long)]
     mint_url: Option<String>,
 
-    /// Target label used in reports.
+    /// Report file name written to ../reports/<report-name>.json.
     #[arg(long)]
-    target_name: Option<String>,
+    report_name: Option<String>,
 
     /// Which scenario set to run.
     #[arg(long, value_enum, default_value_t = Suite::All)]
@@ -221,19 +220,13 @@ async fn main() -> Result<()> {
     };
     let target = match (&args.mint_url, &embedded_mint) {
         (Some(mint_url), _) => TargetProfile {
-            name: args
-                .target_name
-                .clone()
-                .unwrap_or_else(|| "external".to_string()),
+            name: "external".to_string(),
             mint_url: mint_url.clone(),
             manual_http_funding: true,
             relaxed_external_negative_errors: true,
         },
         (None, Some(mint)) => TargetProfile {
-            name: args
-                .target_name
-                .clone()
-                .unwrap_or_else(|| "cdk".to_string()),
+            name: "cdk".to_string(),
             mint_url: mint.mint_url.clone(),
             manual_http_funding: false,
             relaxed_external_negative_errors: false,
@@ -476,7 +469,11 @@ async fn main() -> Result<()> {
             results,
         };
 
-        write_json_report(Path::new(DEFAULT_JSON_REPORT_PATH), &report).await?;
+        if let Some(report_name) = args.report_name.as_deref() {
+            let report_path = report_path_for_name(report_name);
+            write_json_report(&report_path, &report).await?;
+            println!("Wrote JSON report: {}", report_path.display());
+        }
 
         Ok(report)
     }
@@ -908,6 +905,12 @@ impl TestContext {
             &keyset_keys,
         )?)
     }
+}
+
+fn report_path_for_name(report_name: &str) -> PathBuf {
+    Path::new("..")
+        .join("reports")
+        .join(format!("{}.json", report_name))
 }
 
 fn standard_fee_and_amounts() -> FeeAndAmounts {
@@ -3187,6 +3190,9 @@ fn create_temp_work_dir(prefix: &str) -> Result<PathBuf> {
 
 async fn write_json_report(path: &Path, report: &Report) -> Result<()> {
     let json = serde_json::to_string_pretty(report)?;
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
     tokio::fs::write(path, json).await?;
     Ok(())
 }
