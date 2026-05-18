@@ -8,7 +8,6 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow};
 use bip39::Mnemonic;
-use chrono::{DateTime, SecondsFormat, Utc};
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::{blind_message, construct_proofs};
 use cdk::mint_url::MintUrl;
@@ -23,6 +22,7 @@ use cdk::wallet::{HttpClient, MintConnector, Wallet, WalletBuilder};
 use cdk::{Amount, Error, MeltQuoteCreateResponse, MeltQuoteRequest, MeltQuoteResponse, StreamExt};
 use cdk_fake_wallet::create_fake_invoice;
 use cdk_mintd::config::{Database, DatabaseEngine, FakeWallet, Info, Ln, LnBackend, Settings};
+use chrono::{DateTime, SecondsFormat, Utc};
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
@@ -276,6 +276,10 @@ async fn main() -> Result<()> {
                 scenario_p2pk_duplicate_signatures_fail,
             ),
             scenario(
+                "htlc_preimage_only_no_pubkeys_succeeds",
+                scenario_htlc_preimage_only_no_pubkeys_succeeds,
+            ),
+            scenario(
                 "htlc_preimage_only_fails",
                 scenario_htlc_preimage_only_fails,
             ),
@@ -365,6 +369,10 @@ async fn main() -> Result<()> {
                 scenario_p2pk_sigall_output_amounts_swapped_fail,
             ),
             scenario(
+                "htlc_sigall_preimage_only_no_pubkeys_succeeds",
+                scenario_htlc_sigall_preimage_only_no_pubkeys_succeeds,
+            ),
+            scenario(
                 "htlc_sigall_preimage_only_fails",
                 scenario_htlc_sigall_preimage_only_fails,
             ),
@@ -401,6 +409,10 @@ async fn main() -> Result<()> {
                 scenario_melt_p2pk_signed_succeeds,
             ),
             scenario(
+                "melt_htlc_preimage_only_no_pubkeys_succeeds",
+                scenario_melt_htlc_preimage_only_no_pubkeys_succeeds,
+            ),
+            scenario(
                 "melt_htlc_preimage_only_fails",
                 scenario_melt_htlc_preimage_only_fails,
             ),
@@ -423,6 +435,10 @@ async fn main() -> Result<()> {
             scenario(
                 "melt_p2pk_sigall_transaction_signature_succeeds",
                 scenario_melt_p2pk_sigall_transaction_signature_succeeds,
+            ),
+            scenario(
+                "melt_htlc_sigall_preimage_only_no_pubkeys_succeeds",
+                scenario_melt_htlc_sigall_preimage_only_no_pubkeys_succeeds,
             ),
             scenario(
                 "melt_htlc_sigall_preimage_only_fails",
@@ -1195,6 +1211,23 @@ fn add_empty_preimage_and_sign_all_inputs(
     Ok(())
 }
 
+fn assert_htlc_witness_omits_signatures(proof: &Proof, context: &str) -> Result<()> {
+    let witness = match proof.witness.as_ref() {
+        Some(Witness::HTLCWitness(witness)) => witness,
+        Some(_) => return Err(anyhow!("{context}: expected HTLC witness")),
+        None => return Err(anyhow!("{context}: missing witness")),
+    };
+    let value = serde_json::to_value(witness)?;
+
+    if value.get("signatures").is_some() {
+        return Err(anyhow!(
+            "{context}: serialized HTLC witness unexpectedly included signatures field"
+        ));
+    }
+
+    Ok(())
+}
+
 fn error_contains_any(err: &Error, expected_substrings: &[&str]) -> bool {
     let display = err.to_string();
     let debug = format!("{err:?}");
@@ -1693,6 +1726,31 @@ async fn scenario_htlc_preimage_only_fails(mint_url: String) -> Result<String> {
 
     let error = expect_swap_failure(ctx.client.post_swap(request).await, "HTLC preimage-only")?;
     Ok(format!("preimage-only HTLC spend rejected: {error}"))
+}
+
+async fn scenario_htlc_preimage_only_no_pubkeys_succeeds(mint_url: String) -> Result<String> {
+    let fixture = create_test_hash_and_preimage();
+    let ctx = TestContext::with_funds(&mint_url, standard_input_amount()).await?;
+    let conditions = SpendingConditions::new_htlc_hash(&fixture.hash, None)?;
+    let locked = lock_proofs_with_conditions(&ctx, standard_input_amount(), &conditions).await?;
+    let mut request = SwapRequest::new(
+        locked.proofs,
+        random_outputs(locked.keyset_id, standard_input_amount())?,
+    );
+
+    for proof in request.inputs_mut() {
+        proof.add_preimage(fixture.preimage.clone());
+        assert_htlc_witness_omits_signatures(proof, "HTLC preimage-only without pubkeys")?;
+    }
+
+    let response = expect_swap_success(
+        ctx.client.post_swap(request).await,
+        "HTLC preimage-only without pubkeys",
+    )?;
+    Ok(format!(
+        "preimage-only HTLC swap without pubkeys succeeded with {} output signature(s)",
+        response.signatures.len()
+    ))
 }
 
 async fn scenario_htlc_signature_only_fails(mint_url: String) -> Result<String> {
@@ -2515,6 +2573,43 @@ async fn scenario_htlc_sigall_preimage_only_fails(mint_url: String) -> Result<St
     Ok(format!("SIG_ALL HTLC preimage-only rejected: {error}"))
 }
 
+async fn scenario_htlc_sigall_preimage_only_no_pubkeys_succeeds(
+    mint_url: String,
+) -> Result<String> {
+    let fixture = create_test_hash_and_preimage();
+    let ctx = TestContext::with_funds(&mint_url, standard_input_amount()).await?;
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions::new(
+            None,
+            None,
+            None,
+            None,
+            Some(SigFlag::SigAll),
+            None,
+        )?),
+    )?;
+    let locked = lock_proofs_with_conditions(&ctx, standard_input_amount(), &conditions).await?;
+    let mut request = SwapRequest::new(
+        locked.proofs,
+        random_outputs(locked.keyset_id, standard_input_amount())?,
+    );
+    request.inputs_mut()[0].add_preimage(fixture.preimage);
+    assert_htlc_witness_omits_signatures(
+        &request.inputs()[0],
+        "SIG_ALL HTLC preimage-only without pubkeys",
+    )?;
+
+    let response = expect_swap_success(
+        ctx.client.post_swap(request).await,
+        "SIG_ALL HTLC preimage-only without pubkeys",
+    )?;
+    Ok(format!(
+        "SIG_ALL HTLC preimage-only swap without pubkeys succeeded with {} output signature(s)",
+        response.signatures.len()
+    ))
+}
+
 async fn scenario_htlc_sigall_signature_only_fails(mint_url: String) -> Result<String> {
     let fixture = create_test_hash_and_preimage();
     let ctx = TestContext::with_funds(&mint_url, standard_input_amount()).await?;
@@ -2771,6 +2866,28 @@ async fn scenario_melt_htlc_preimage_only_fails(mint_url: String) -> Result<Stri
     Ok(format!("preimage-only melt rejected as expected: {error}"))
 }
 
+async fn scenario_melt_htlc_preimage_only_no_pubkeys_succeeds(mint_url: String) -> Result<String> {
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(&fixture.hash, None)?;
+    let (ctx, quote, mut proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    for proof in &mut proofs {
+        proof.add_preimage(fixture.preimage.clone());
+        assert_htlc_witness_omits_signatures(proof, "melt HTLC preimage-only without pubkeys")?;
+    }
+
+    let request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.verify_spending_conditions()?;
+
+    let response = post_melt_and_wait_for_success(
+        &ctx.client,
+        request,
+        "melt HTLC preimage-only without pubkeys",
+    )
+    .await?;
+    Ok(format!("melt succeeded with state {}", response.state()))
+}
+
 async fn scenario_melt_htlc_signature_only_fails(mint_url: String) -> Result<String> {
     let alice = create_test_keypair();
     let fixture = create_test_hash_and_preimage();
@@ -2946,6 +3063,40 @@ async fn scenario_melt_htlc_sigall_preimage_only_fails(mint_url: String) -> Resu
     Ok(format!(
         "preimage-only SIG_ALL melt rejected as expected: {error}"
     ))
+}
+
+async fn scenario_melt_htlc_sigall_preimage_only_no_pubkeys_succeeds(
+    mint_url: String,
+) -> Result<String> {
+    let fixture = create_test_hash_and_preimage();
+    let conditions = SpendingConditions::new_htlc_hash(
+        &fixture.hash,
+        Some(Conditions::new(
+            None,
+            None,
+            None,
+            None,
+            Some(SigFlag::SigAll),
+            None,
+        )?),
+    )?;
+    let (ctx, quote, proofs) = prepare_locked_melt_proofs(&mint_url, &conditions).await?;
+
+    let mut request = melt_request_from_proofs(quote.quote_id.clone(), proofs);
+    request.inputs_mut()[0].add_preimage(fixture.preimage);
+    assert_htlc_witness_omits_signatures(
+        &request.inputs()[0],
+        "melt HTLC SIG_ALL preimage-only without pubkeys",
+    )?;
+    request.verify_spending_conditions()?;
+
+    let response = post_melt_and_wait_for_success(
+        &ctx.client,
+        request,
+        "melt HTLC SIG_ALL preimage-only without pubkeys",
+    )
+    .await?;
+    Ok(format!("melt succeeded with state {}", response.state()))
 }
 
 async fn scenario_melt_htlc_sigall_sig_inputs_fail(mint_url: String) -> Result<String> {

@@ -1,6 +1,6 @@
 {
-  "generated_at_unix_secs": 1779131145,
-  "generated_at_utc": "2026-05-18T19:05:45Z",
+  "generated_at_unix_secs": 1779134380,
+  "generated_at_utc": "2026-05-18T19:59:40Z",
   "sigall_mode": "standard",
   "target": "external",
   "mint_url": "http://127.0.0.1:3339",
@@ -68,6 +68,12 @@
       "target": "external",
       "status": "pass",
       "note": "duplicate signatures rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 1 < 2.`"
+    },
+    {
+      "name": "htlc_preimage_only_no_pubkeys_succeeds",
+      "target": "external",
+      "status": "pass",
+      "note": "preimage-only HTLC swap without pubkeys succeeded with 2 output signature(s)"
     },
     {
       "name": "htlc_preimage_only_fails",
@@ -208,6 +214,12 @@
       "note": "restored original output amounts: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.`"
     },
     {
+      "name": "htlc_sigall_preimage_only_no_pubkeys_succeeds",
+      "target": "external",
+      "status": "fail",
+      "note": "SIG_ALL HTLC preimage-only without pubkeys: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage`"
+    },
+    {
       "name": "htlc_sigall_preimage_only_fails",
       "target": "external",
       "status": "pass",
@@ -262,6 +274,12 @@
       "note": "melt succeeded with state PAID"
     },
     {
+      "name": "melt_htlc_preimage_only_no_pubkeys_succeeds",
+      "target": "external",
+      "status": "pass",
+      "note": "melt succeeded with state PAID"
+    },
+    {
       "name": "melt_htlc_preimage_only_fails",
       "target": "external",
       "status": "pass",
@@ -296,6 +314,12 @@
       "target": "external",
       "status": "fail",
       "note": "[submit] melt P2PK SIG_ALL valid"
+    },
+    {
+      "name": "melt_htlc_sigall_preimage_only_no_pubkeys_succeeds",
+      "target": "external",
+      "status": "fail",
+      "note": "[submit] melt HTLC SIG_ALL preimage-only without pubkeys"
     },
     {
       "name": "melt_htlc_sigall_preimage_only_fails",

@@ -27,14 +27,14 @@ Jump to:
 | Field | Value |
 |---|---|
 | Version | `cdk-mintd/0.16.0` |
-| Mint URL | `http://127.0.0.1:33985` |
-| Started At | `2026-05-18T19:05:18Z` |
-| Attempted | 54 |
-| Passed | 54 ✅ |
+| Mint URL | `http://127.0.0.1:38687` |
+| Started At | `2026-05-18T19:59:12Z` |
+| Attempted | 58 |
+| Passed | 58 ✅ |
 | Failed | 0 ✅ |
 
 <details>
-<summary>Scenario Results (54 scenarios, 0 failure(s))</summary>
+<summary>Scenario Results (58 scenarios, 0 failure(s))</summary>
 
 | Scenario | Result | Note |
 |---|---|---|
@@ -48,6 +48,7 @@ Jump to:
 | `p2pk_multisig_locktime_primary_still_works` | ✅ | primary multisig still works after locktime |
 | `p2pk_wrong_signer_fails` | ✅ | wrong signer rejected: Signature missing or invalid |
 | `p2pk_duplicate_signatures_fail` | ✅ | duplicate signatures rejected: Signature missing or invalid |
+| `htlc_preimage_only_no_pubkeys_succeeds` | ✅ | preimage-only HTLC swap without pubkeys succeeded with 2 output signature(s) |
 | `htlc_preimage_only_fails` | ✅ | preimage-only HTLC spend rejected: Unknown error response: `code: 50000, detail: Witness did not provide signatures` |
 | `htlc_signature_only_fails` | ✅ | signature-only HTLC spend rejected: Unknown error response: `code: 50000, detail: Secret is not a HTLC secret` |
 | `htlc_swap_preimage_and_signature_succeeds` | ✅ | HTLC swap succeeded with 2 output signature(s) |
@@ -71,6 +72,7 @@ Jump to:
 | `p2pk_sigall_more_signatures_than_required` | ✅ | SIG_ALL accepted more valid signatures than required |
 | `p2pk_sigall_refund_multisig_2of2` | ✅ | SIG_ALL 2-of-2 refund multisig enforced correctly |
 | `p2pk_sigall_output_amounts_swapped_fail` | ✅ | tampered SIG_ALL outputs rejected: Signature missing or invalid |
+| `htlc_sigall_preimage_only_no_pubkeys_succeeds` | ✅ | SIG_ALL HTLC preimage-only swap without pubkeys succeeded with 2 output signature(s) |
 | `htlc_sigall_preimage_only_fails` | ✅ | SIG_ALL HTLC preimage-only rejected: Unknown error response: `code: 50000, detail: Witness signatures not provided` |
 | `htlc_sigall_signature_only_fails` | ✅ | SIG_ALL HTLC signature-only rejected: Unknown error response: `code: 50000, detail: HTLC spend conditions are not met` |
 | `htlc_sigall_requires_preimage_and_transaction_signature` | ✅ | SIG_ALL HTLC swap succeeded with 2 output signature(s) |
@@ -80,12 +82,14 @@ Jump to:
 | `htlc_sigall_receiver_path_after_locktime` | ✅ | SIG_ALL HTLC receiver path remains valid after locktime |
 | `melt_p2pk_unsigned_fails` | ✅ | unsigned melt rejected as expected: Signature missing or invalid |
 | `melt_p2pk_signed_succeeds` | ✅ | melt succeeded with state PAID |
+| `melt_htlc_preimage_only_no_pubkeys_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_htlc_preimage_only_fails` | ✅ | preimage-only melt rejected as expected: Unknown error response: `code: 50000, detail: Witness did not provide signatures` |
 | `melt_htlc_signature_only_fails` | ✅ | signature-only melt rejected as expected: Unknown error response: `code: 50000, detail: Secret is not a HTLC secret` |
 | `melt_htlc_preimage_and_signature_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_p2pk_sigall_unsigned_fails` | ✅ | unsigned SIG_ALL melt rejected as expected: Signature missing or invalid |
 | `melt_p2pk_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for SIG_ALL as expected: Signature missing or invalid |
 | `melt_p2pk_sigall_transaction_signature_succeeds` | ✅ | melt succeeded with state PAID |
+| `melt_htlc_sigall_preimage_only_no_pubkeys_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_htlc_sigall_preimage_only_fails` | ✅ | preimage-only SIG_ALL melt rejected as expected: Unknown error response: `code: 50000, detail: Witness signatures not provided` |
 | `melt_htlc_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: Unknown error response: `code: 50000, detail: HTLC spend conditions are not met` |
 | `melt_htlc_sigall_preimage_and_transaction_signature_succeeds` | ✅ | melt succeeded with state PAID |
@@ -103,13 +107,13 @@ Jump to:
 |---|---|
 | Version | `nutmix/0.4.0` |
 | Mint URL | `http://127.0.0.1:3338` |
-| Started At | `2026-05-18T19:05:34Z` |
-| Attempted | 54 |
+| Started At | `2026-05-18T19:59:28Z` |
+| Attempted | 58 |
 | Passed | 48 ✅ |
-| Failed | 6 ❌ |
+| Failed | 10 ❌ |
 
 <details>
-<summary>Scenario Results (54 scenarios, 6 failure(s))</summary>
+<summary>Scenario Results (58 scenarios, 10 failure(s))</summary>
 
 | Scenario | Result | Note |
 |---|---|---|
@@ -123,6 +127,7 @@ Jump to:
 | `p2pk_multisig_locktime_primary_still_works` | ✅ | primary multisig still works after locktime |
 | `p2pk_wrong_signer_fails` | ✅ | wrong signer rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `p2pk_duplicate_signatures_fail` | ✅ | duplicate signatures rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
+| `htlc_preimage_only_no_pubkeys_succeeds` | ❌ | HTLC preimage-only without pubkeys: Token not verified |
 | `htlc_preimage_only_fails` | ✅ | preimage-only HTLC spend rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `htlc_signature_only_fails` | ✅ | signature-only HTLC spend rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `htlc_swap_preimage_and_signature_succeeds` | ✅ | HTLC swap succeeded with 2 output signature(s) |
@@ -146,6 +151,7 @@ Jump to:
 | `p2pk_sigall_more_signatures_than_required` | ✅ | SIG_ALL accepted more valid signatures than required |
 | `p2pk_sigall_refund_multisig_2of2` | ✅ | SIG_ALL 2-of-2 refund multisig enforced correctly |
 | `p2pk_sigall_output_amounts_swapped_fail` | ✅ | tampered SIG_ALL outputs rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
+| `htlc_sigall_preimage_only_no_pubkeys_succeeds` | ❌ | SIG_ALL HTLC preimage-only without pubkeys: Token not verified |
 | `htlc_sigall_preimage_only_fails` | ✅ | SIG_ALL HTLC preimage-only rejected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `htlc_sigall_signature_only_fails` | ❌ | SIG_ALL HTLC signature-only: swap unexpectedly succeeded |
 | `htlc_sigall_requires_preimage_and_transaction_signature` | ✅ | SIG_ALL HTLC swap succeeded with 2 output signature(s) |
@@ -155,12 +161,14 @@ Jump to:
 | `htlc_sigall_receiver_path_after_locktime` | ✅ | SIG_ALL HTLC receiver path remains valid after locktime |
 | `melt_p2pk_unsigned_fails` | ✅ | unsigned melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None |
 | `melt_p2pk_signed_succeeds` | ✅ | melt succeeded with state PAID |
+| `melt_htlc_preimage_only_no_pubkeys_succeeds` | ❌ | [submit] melt HTLC preimage-only without pubkeys |
 | `melt_htlc_preimage_only_fails` | ✅ | preimage-only melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `melt_htlc_signature_only_fails` | ✅ | signature-only melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `melt_htlc_preimage_and_signature_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_p2pk_sigall_unsigned_fails` | ✅ | unsigned SIG_ALL melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(99999), detail=None |
 | `melt_p2pk_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for SIG_ALL as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `melt_p2pk_sigall_transaction_signature_succeeds` | ✅ | melt succeeded with state PAID |
+| `melt_htlc_sigall_preimage_only_no_pubkeys_succeeds` | ❌ | [submit] melt HTLC SIG_ALL preimage-only without pubkeys |
 | `melt_htlc_sigall_preimage_only_fails` | ✅ | preimage-only SIG_ALL melt rejected as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `melt_htlc_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: accepted protocol-like rejection: status=Some(400), code=Some(10001), detail=Some("Token not verified") |
 | `melt_htlc_sigall_preimage_and_transaction_signature_succeeds` | ✅ | melt succeeded with state PAID |
@@ -179,13 +187,13 @@ Jump to:
 | Version | `Nutshell/0.20.0` |
 | Mint URL | `http://127.0.0.1:3339` |
 | Mint Name | Local Nutshell Test Mint |
-| Started At | `2026-05-18T19:05:45Z` |
-| Attempted | 54 |
-| Passed | 36 ✅ |
-| Failed | 18 ❌ |
+| Started At | `2026-05-18T19:59:40Z` |
+| Attempted | 58 |
+| Passed | 38 ✅ |
+| Failed | 20 ❌ |
 
 <details>
-<summary>Scenario Results (54 scenarios, 18 failure(s))</summary>
+<summary>Scenario Results (58 scenarios, 20 failure(s))</summary>
 
 | Scenario | Result | Note |
 |---|---|---|
@@ -199,6 +207,7 @@ Jump to:
 | `p2pk_multisig_locktime_primary_still_works` | ✅ | primary multisig still works after locktime |
 | `p2pk_wrong_signer_fails` | ✅ | wrong signer rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.` |
 | `p2pk_duplicate_signatures_fail` | ✅ | duplicate signatures rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 1 < 2.` |
+| `htlc_preimage_only_no_pubkeys_succeeds` | ✅ | preimage-only HTLC swap without pubkeys succeeded with 2 output signature(s) |
 | `htlc_preimage_only_fails` | ✅ | preimage-only HTLC spend rejected: Unknown error response: `code: 11000, detail: no signatures in proof.` |
 | `htlc_signature_only_fails` | ✅ | signature-only HTLC spend rejected: Unknown error response: `code: 11000, detail: no HTLC preimage provided` |
 | `htlc_swap_preimage_and_signature_succeeds` | ✅ | HTLC swap succeeded with 2 output signature(s) |
@@ -222,6 +231,7 @@ Jump to:
 | `p2pk_sigall_more_signatures_than_required` | ❌ | extra valid signatures: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 2.` |
 | `p2pk_sigall_refund_multisig_2of2` | ❌ | 2-of-2 refund multisig: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 2.` |
 | `p2pk_sigall_output_amounts_swapped_fail` | ❌ | restored original output amounts: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.` |
+| `htlc_sigall_preimage_only_no_pubkeys_succeeds` | ❌ | SIG_ALL HTLC preimage-only without pubkeys: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
 | `htlc_sigall_preimage_only_fails` | ✅ | SIG_ALL HTLC preimage-only rejected: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
 | `htlc_sigall_signature_only_fails` | ✅ | SIG_ALL HTLC signature-only rejected: Unknown error response: `code: 11000, detail: no HTLC preimage provided` |
 | `htlc_sigall_requires_preimage_and_transaction_signature` | ❌ | SIG_ALL HTLC valid spend: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
@@ -231,12 +241,14 @@ Jump to:
 | `htlc_sigall_receiver_path_after_locktime` | ❌ | SIG_ALL HTLC receiver after locktime: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
 | `melt_p2pk_unsigned_fails` | ✅ | unsigned melt rejected as expected: Unknown error response: `code: 0, detail: Witness is missing for p2pk signature` |
 | `melt_p2pk_signed_succeeds` | ✅ | melt succeeded with state PAID |
+| `melt_htlc_preimage_only_no_pubkeys_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_htlc_preimage_only_fails` | ✅ | preimage-only melt rejected as expected: Unknown error response: `code: 11000, detail: no signatures in proof.` |
 | `melt_htlc_signature_only_fails` | ✅ | signature-only melt rejected as expected: Unknown error response: `code: 11000, detail: no HTLC preimage provided` |
 | `melt_htlc_preimage_and_signature_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_p2pk_sigall_unsigned_fails` | ✅ | unsigned SIG_ALL melt rejected as expected: Unknown error response: `code: 11000, detail: no witness in proof.` |
 | `melt_p2pk_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for SIG_ALL as expected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.` |
 | `melt_p2pk_sigall_transaction_signature_succeeds` | ❌ | [submit] melt P2PK SIG_ALL valid |
+| `melt_htlc_sigall_preimage_only_no_pubkeys_succeeds` | ❌ | [submit] melt HTLC SIG_ALL preimage-only without pubkeys |
 | `melt_htlc_sigall_preimage_only_fails` | ❌ | melt HTLC SIG_ALL preimage-only: unexpected error `Http transport error Some(500): Internal Server Error`; expected one of ["Witness signatures not provided", "Witness did not provide signatures", "Witness is missing for htlc preimage"] |
 | `melt_htlc_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: accepted protocol-like rejection: status=Some(400), code=Some(11000), detail=Some("signature threshold not met. 0 < 1.") |
 | `melt_htlc_sigall_preimage_and_transaction_signature_succeeds` | ❌ | [submit] melt HTLC SIG_ALL valid |
@@ -256,13 +268,13 @@ Jump to:
 | Mint URL | `http://127.0.0.1:3339` |
 | Mint Name | Local Nutshell Test Mint |
 | SIG_ALL Mode | `legacy` |
-| Started At | `2026-05-18T19:06:09Z` |
-| Attempted | 54 |
-| Passed | 43 ✅ |
-| Failed | 11 ❌ |
+| Started At | `2026-05-18T20:00:05Z` |
+| Attempted | 58 |
+| Passed | 45 ✅ |
+| Failed | 13 ❌ |
 
 <details>
-<summary>Scenario Results (54 scenarios, 11 failure(s))</summary>
+<summary>Scenario Results (58 scenarios, 13 failure(s))</summary>
 
 | Scenario | Result | Note |
 |---|---|---|
@@ -276,6 +288,7 @@ Jump to:
 | `p2pk_multisig_locktime_primary_still_works` | ✅ | primary multisig still works after locktime |
 | `p2pk_wrong_signer_fails` | ✅ | wrong signer rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.` |
 | `p2pk_duplicate_signatures_fail` | ✅ | duplicate signatures rejected: Unknown error response: `code: 11000, detail: signature threshold not met. 1 < 2.` |
+| `htlc_preimage_only_no_pubkeys_succeeds` | ✅ | preimage-only HTLC swap without pubkeys succeeded with 2 output signature(s) |
 | `htlc_preimage_only_fails` | ✅ | preimage-only HTLC spend rejected: Unknown error response: `code: 11000, detail: no signatures in proof.` |
 | `htlc_signature_only_fails` | ✅ | signature-only HTLC spend rejected: Unknown error response: `code: 11000, detail: no HTLC preimage provided` |
 | `htlc_swap_preimage_and_signature_succeeds` | ✅ | HTLC swap succeeded with 2 output signature(s) |
@@ -299,6 +312,7 @@ Jump to:
 | `p2pk_sigall_more_signatures_than_required` | ✅ | SIG_ALL accepted more valid signatures than required |
 | `p2pk_sigall_refund_multisig_2of2` | ✅ | SIG_ALL 2-of-2 refund multisig enforced correctly |
 | `p2pk_sigall_output_amounts_swapped_fail` | ❌ | tampered output amounts: swap unexpectedly succeeded |
+| `htlc_sigall_preimage_only_no_pubkeys_succeeds` | ❌ | SIG_ALL HTLC preimage-only without pubkeys: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
 | `htlc_sigall_preimage_only_fails` | ✅ | SIG_ALL HTLC preimage-only rejected: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
 | `htlc_sigall_signature_only_fails` | ✅ | SIG_ALL HTLC signature-only rejected: Unknown error response: `code: 11000, detail: no HTLC preimage provided` |
 | `htlc_sigall_requires_preimage_and_transaction_signature` | ❌ | SIG_ALL HTLC valid spend: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
@@ -308,12 +322,14 @@ Jump to:
 | `htlc_sigall_receiver_path_after_locktime` | ❌ | SIG_ALL HTLC receiver after locktime: Unknown error response: `code: 0, detail: Witness is missing for htlc preimage` |
 | `melt_p2pk_unsigned_fails` | ✅ | unsigned melt rejected as expected: Unknown error response: `code: 0, detail: Witness is missing for p2pk signature` |
 | `melt_p2pk_signed_succeeds` | ✅ | melt succeeded with state PAID |
+| `melt_htlc_preimage_only_no_pubkeys_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_htlc_preimage_only_fails` | ✅ | preimage-only melt rejected as expected: Unknown error response: `code: 11000, detail: no signatures in proof.` |
 | `melt_htlc_signature_only_fails` | ✅ | signature-only melt rejected as expected: Unknown error response: `code: 11000, detail: no HTLC preimage provided` |
 | `melt_htlc_preimage_and_signature_succeeds` | ✅ | melt succeeded with state PAID |
 | `melt_p2pk_sigall_unsigned_fails` | ✅ | unsigned SIG_ALL melt rejected as expected: Unknown error response: `code: 11000, detail: no witness in proof.` |
 | `melt_p2pk_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for SIG_ALL as expected: Unknown error response: `code: 11000, detail: signature threshold not met. 0 < 1.` |
 | `melt_p2pk_sigall_transaction_signature_succeeds` | ❌ | P2PK spend conditions are not met |
+| `melt_htlc_sigall_preimage_only_no_pubkeys_succeeds` | ❌ | [submit] melt HTLC SIG_ALL preimage-only without pubkeys |
 | `melt_htlc_sigall_preimage_only_fails` | ❌ | melt HTLC SIG_ALL preimage-only: unexpected error `Http transport error Some(500): Internal Server Error`; expected one of ["Witness signatures not provided", "Witness did not provide signatures", "Witness is missing for htlc preimage"] |
 | `melt_htlc_sigall_sig_inputs_fail` | ✅ | SIG_INPUTS melt rejected for HTLC SIG_ALL as expected: accepted protocol-like rejection: status=Some(400), code=Some(11000), detail=Some("signature threshold not met. 0 < 1.") |
 | `melt_htlc_sigall_preimage_and_transaction_signature_succeeds` | ❌ | HTLC spend conditions are not met |

@@ -1,9 +1,9 @@
 {
-  "generated_at_unix_secs": 1779131118,
-  "generated_at_utc": "2026-05-18T19:05:18Z",
+  "generated_at_unix_secs": 1779134352,
+  "generated_at_utc": "2026-05-18T19:59:12Z",
   "sigall_mode": "standard",
   "target": "cdk",
-  "mint_url": "http://127.0.0.1:33985",
+  "mint_url": "http://127.0.0.1:38687",
   "mint": {
     "name": null,
     "version": "cdk-mintd/0.16.0"
@@ -68,6 +68,12 @@
       "target": "cdk",
       "status": "pass",
       "note": "duplicate signatures rejected: Signature missing or invalid"
+    },
+    {
+      "name": "htlc_preimage_only_no_pubkeys_succeeds",
+      "target": "cdk",
+      "status": "pass",
+      "note": "preimage-only HTLC swap without pubkeys succeeded with 2 output signature(s)"
     },
     {
       "name": "htlc_preimage_only_fails",
@@ -208,6 +214,12 @@
       "note": "tampered SIG_ALL outputs rejected: Signature missing or invalid"
     },
     {
+      "name": "htlc_sigall_preimage_only_no_pubkeys_succeeds",
+      "target": "cdk",
+      "status": "pass",
+      "note": "SIG_ALL HTLC preimage-only swap without pubkeys succeeded with 2 output signature(s)"
+    },
+    {
       "name": "htlc_sigall_preimage_only_fails",
       "target": "cdk",
       "status": "pass",
@@ -262,6 +274,12 @@
       "note": "melt succeeded with state PAID"
     },
     {
+      "name": "melt_htlc_preimage_only_no_pubkeys_succeeds",
+      "target": "cdk",
+      "status": "pass",
+      "note": "melt succeeded with state PAID"
+    },
+    {
       "name": "melt_htlc_preimage_only_fails",
       "target": "cdk",
       "status": "pass",
@@ -293,6 +311,12 @@
     },
     {
       "name": "melt_p2pk_sigall_transaction_signature_succeeds",
+      "target": "cdk",
+      "status": "pass",
+      "note": "melt succeeded with state PAID"
+    },
+    {
+      "name": "melt_htlc_sigall_preimage_only_no_pubkeys_succeeds",
       "target": "cdk",
       "status": "pass",
       "note": "melt succeeded with state PAID"
